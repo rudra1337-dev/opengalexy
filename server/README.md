@@ -56,7 +56,6 @@ This project is being built by a solo founder as a **startup MVP** targeting stu
 | Google OAuth only | ❌ | ❌ | ❌ | ✅ No passwords |
 | Open invite links | ⚠️ Limited | ✅ | ❌ | ✅ |
 
-Replace that section in your `README.md` with this. It's cleaner — no legal/trademark concerns, no naming competitors directly, and it actually reads better for a startup pitch! 🎯
 ---
 
 ## 🛠️ Tech Stack
