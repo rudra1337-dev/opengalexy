@@ -1,0 +1,254 @@
+# ============================================================
+#  .gitignore — Server Chat Application
+# ============================================================
+
+
+# ───────────────────────────────────────────────
+#  Dependencies
+# ───────────────────────────────────────────────
+node_modules/
+jspm_packages/
+bower_components/
+vendor/
+
+
+# ───────────────────────────────────────────────
+#  Environment & Secrets  🔐
+# ───────────────────────────────────────────────
+.env
+.env.*
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.staging
+.env.production
+.env.production.local
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+secrets/
+config/secrets.*
+config/credentials.*
+
+
+# ───────────────────────────────────────────────
+#  Build Output
+# ───────────────────────────────────────────────
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+
+
+# ───────────────────────────────────────────────
+#  Logs  📋
+# ───────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+chat-logs/
+message-logs/
+server.log
+error.log
+access.log
+combined.log
+
+
+# ───────────────────────────────────────────────
+#  Database & Storage  🗄️
+# ───────────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+data/
+database/dump/
+database/backups/
+mongo-data/
+redis-data/
+postgres-data/
+dump.rdb
+
+
+# ───────────────────────────────────────────────
+#  Chat-Specific: Uploads & Media  💬
+# ───────────────────────────────────────────────
+uploads/
+media/
+attachments/
+avatars/
+profile-pictures/
+audio-messages/
+voice-notes/
+tmp/
+temp/
+
+
+# ───────────────────────────────────────────────
+#  Runtime & Process
+# ───────────────────────────────────────────────
+*.pid
+*.seed
+*.pid.lock
+pids/
+.pm2/
+
+
+# ───────────────────────────────────────────────
+#  Cache & Coverage
+# ───────────────────────────────────────────────
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.npm/
+.yarn/
+.pnp.*
+coverage/
+.nyc_output/
+*.lcov
+
+
+# ───────────────────────────────────────────────
+#  Testing
+# ───────────────────────────────────────────────
+test-results/
+playwright-report/
+jest-results/
+
+
+# ───────────────────────────────────────────────
+#  Docker & DevOps
+# ───────────────────────────────────────────────
+.dockerignore
+docker-compose.override.yml
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+
+# ───────────────────────────────────────────────
+#  SSL / TLS Certificates  🔒
+# ───────────────────────────────────────────────
+ssl/
+certs/
+*.csr
+
+
+# ───────────────────────────────────────────────
+#  OS & Editor Junk
+# ───────────────────────────────────────────────
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# VSCode
+.vscode/
+!.vscode/extensions.json
+
+# JetBrains
+.idea/
+*.iml
+
+# Vim / Emacs
+*.swp
+*.swo
+*.bak
+\#*\#
+.#*
+
+
+# ───────────────────────────────────────────────
+#  AI Coding Tools & Models  🤖
+# ───────────────────────────────────────────────
+
+# OpenAI Codex / ChatGPT / Codex CLI
+.codex/
+codex-history/
+codex_output/
+.openai/
+openai_cache/
+
+# GitHub Copilot
+.copilot/
+.github/copilot-*.yml
+
+# Cursor IDE
+.cursor/
+.cursorignore
+.cursorcontext
+.cursorrules         # keep this only if you don't want rules in repo
+cursor_history/
+
+# Windsurf (Codeium)
+.windsurf/
+.codeium/
+
+# Claude / Anthropic
+.claude/
+.claude_files/
+CLAUDE.md            # remove this line if you WANT CLAUDE.md tracked
+claude_output/
+
+# Aider (AI pair programmer)
+.aider*
+.aider.tags.cache.v*/
+aider_history/
+
+# Continue.dev
+.continue/
+
+# Tabnine
+.tabnine/
+
+# General AI tool artifacts
+ai-output/
+ai-generated/
+.ai/
+ai_context/
+*.ai_cache
+ai_sessions/
+prompt_history/
+llm_cache/
+vector_store/
+embeddings/
+chroma_db/
+faiss_index/
+*.chroma
+*.faiss
+*.pkl            # pickled model/embedding files
+
+
+# ───────────────────────────────────────────────
+#  Misc
+# ───────────────────────────────────────────────
+*.tgz
+*.tar.gz
+*.zip
+.grunt/
+.lock-wscript
