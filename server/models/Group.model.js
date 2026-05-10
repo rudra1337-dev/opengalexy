@@ -70,7 +70,7 @@ const groupSchema = new mongoose.Schema(
     }
 )
 
-groupSchema.index({ inviteCode: 1 })
+// groupSchema.index({ inviteCode: 1 })
 groupSchema.index({ isPublic: 1 })
 
 const Group = mongoose.model('Group', groupSchema)
