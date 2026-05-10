@@ -45,15 +45,18 @@ This project is being built by a solo founder as a **startup MVP** targeting stu
 
 ## ✨ What Makes It Different
 
-| Feature | WhatsApp | Discord | Telegram | OpenGalexy |
+| Feature | Traditional Chat Apps | Community Platforms | Secure Messengers | OpenGalexy |
 |---|---|---|---|---|
 | Temp messages | ❌ | ❌ | ⚠️ Limited | ✅ Full control |
 | Burn after read | ❌ | ❌ | ❌ | ✅ |
 | Temp accounts | ❌ | ❌ | ❌ | ✅ |
-| Public groups (no login) | ❌ | ⚠️ | ❌ | ✅ |
+| Public groups (no login) | ❌ | ⚠️ Partial | ❌ | ✅ |
 | Nearby file sharing | ❌ | ❌ | ❌ | ✅ WebRTC |
 | User-controlled TTL | ❌ | ❌ | ❌ | ✅ Per message |
+| Google OAuth only | ❌ | ❌ | ❌ | ✅ No passwords |
+| Open invite links | ⚠️ Limited | ✅ | ❌ | ✅ |
 
+Replace that section in your `README.md` with this. It's cleaner — no legal/trademark concerns, no naming competitors directly, and it actually reads better for a startup pitch! 🎯
 ---
 
 ## 🛠️ Tech Stack
@@ -624,7 +627,7 @@ git --version     # any recent version
 ### Step 1 — Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/opengalexy.git
+git clone https://github.com/rudra1337-dev/opengalexy.git
 cd opengalexy/server
 ```
 
