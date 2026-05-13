@@ -1,0 +1,60 @@
+.toggle {
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    background-color: var(--bg-tertiary);
+    transition: var(--transition);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.toggle.on {
+    background-color: var(--accent-primary);
+}
+
+.toggle.warn {
+    background-color: var(--warning-color);
+}
+
+.toggleSlider {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: white;
+    top: 2px;
+    left: 2px;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.toggle.on .toggleSlider,
+.toggle.warn .toggleSlider {
+    left: 22px;
+}
+
+.durationSelect {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 12px;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.durationSelect:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.dangerBtn {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--error-color);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    transition: var(--transition);
+}
+
+.dangerBtn:hover {
+    background-color: rgba(239, 68, 68, 0.2);
+}

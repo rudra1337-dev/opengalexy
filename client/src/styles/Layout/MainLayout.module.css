@@ -1,0 +1,245 @@
+.shell {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: transparent;
+}
+
+.mobileNavbar {
+    display: none;
+}
+
+.appFrame {
+    flex: 1;
+    display: flex;
+    gap: 18px;
+    overflow: hidden;
+    padding: 18px;
+}
+
+.rail {
+    width: 94px;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    border-radius: 28px;
+    backdrop-filter: blur(24px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 18px 12px;
+    flex-shrink: 0;
+}
+
+.railTop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.brandMark {
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    font-size: 1.5rem;
+    background: linear-gradient(
+        145deg,
+        rgba(15, 157, 121, 0.16),
+        rgba(23, 104, 172, 0.18)
+    );
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.brandText {
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    line-height: 1.15;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.railNav {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+    flex: 1;
+}
+
+.railLink {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 8px;
+    border-radius: 20px;
+    color: var(--text-tertiary);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.railLink:hover {
+    background: var(--accent-light);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.railLinkActive {
+    background: linear-gradient(
+        180deg,
+        var(--accent-light),
+        rgba(23, 104, 172, 0.08)
+    );
+    color: var(--accent-primary);
+    box-shadow: inset 0 0 0 1px rgba(15, 157, 121, 0.08);
+}
+
+.railIcon {
+    font-size: 1.15rem;
+}
+
+.railLabel {
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.railFooter {
+    padding-top: 10px;
+}
+
+.profileDock {
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+}
+
+.profileAvatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(
+        145deg,
+        var(--accent-primary),
+        var(--accent-secondary)
+    );
+    color: white;
+    font-weight: 800;
+    box-shadow: 0 14px 30px var(--accent-glow);
+}
+
+.profileMeta {
+    display: none;
+}
+
+.sidebarPanel,
+.detailPanel {
+    min-width: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 28px;
+    overflow: hidden;
+    background: var(--bg-elevated);
+    backdrop-filter: blur(24px);
+    box-shadow: var(--shadow-sm);
+}
+
+.sidebarPanel {
+    width: 390px;
+    flex-shrink: 0;
+}
+
+.detailPanel {
+    flex: 1;
+    background: var(--bg-chat-pattern);
+}
+
+.mobileFooter {
+    display: none;
+}
+
+.detailPanel {
+    display: none;
+}
+
+.detailVisible {
+    display: block;
+}
+
+@media (min-width: 768px) {
+    .detailPanel {
+        display: block;
+    }
+}
+
+@media (max-width: 1024px) {
+    .appFrame {
+        gap: 14px;
+        padding: 14px;
+    }
+
+    .sidebarPanel {
+        width: 340px;
+    }
+}
+
+@media (max-width: 767px) {
+    .mobileNavbar {
+        display: block;
+        flex-shrink: 0;
+    }
+
+    .appFrame {
+        padding: 0;
+        gap: 0;
+        position: relative;
+    }
+
+    .rail {
+        display: none;
+    }
+
+    .sidebarPanel,
+    .detailPanel {
+        width: 100%;
+        height: 100%;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        backdrop-filter: none;
+        background: transparent;
+    }
+
+    .sidebarPanel {
+        display: block;
+    }
+
+    .sidebarHiddenMobile {
+        display: none;
+    }
+
+    .detailPanel {
+        display: none;
+    }
+
+    .detailVisible {
+        display: block;
+    }
+
+    .mobileFooter {
+        display: block;
+        flex-shrink: 0;
+    }
+
+    .mobileChromeHidden {
+        display: none;
+    }
+}

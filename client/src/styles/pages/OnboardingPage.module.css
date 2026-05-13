@@ -1,0 +1,39 @@
+.container {
+    width: 100%;
+    min-height: 100vh;
+    background-color: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+}
+
+.toastContainer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 60;
+    animation: slideUp 0.3s ease-out;
+}
+
+.toast {
+    background-color: var(--error-color);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 600px) {
+    .toastContainer {
+        bottom: 16px;
+        right: 16px;
+        left: 16px;
+    }
+
+    .toast {
+        width: 100%;
+    }
+}
