@@ -1,8 +1,12 @@
 import { useEffect } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { setActiveGroup } from '../redux/slices/groupsSlice'
-import { setActiveChat } from '../redux/slices/chatsSlice'
+import {
+    setActiveGroup,
+    setMyGroups,
+    setPublicGroups
+} from '../redux/slices/groupsSlice'
+import { setActiveChat, setChatList } from '../redux/slices/chatsSlice'
 import MainLayout from '../components/Layout/MainLayout'
 import ChatList from '../components/Chats/ChatList'
 import ChatScreen from '../components/Chats/ChatScreen'
@@ -10,11 +14,33 @@ import GroupList from '../components/Groups/GroupList'
 import GroupScreen from '../components/Groups/GroupScreen'
 import NearbyScreen from '../components/NearbyShare/NearbyScreen'
 import CallScreen from '../components/Calls/CallScreen'
-import ProfileCard from '../components/Profile/ProfileCard'
-import SettingsPanel from '../components/Profile/SettingsPanel'
 import ProfilePage from './ProfilePage'
+import { useNearby } from '../hooks/useNearby'
+import useGuestNearby from '../hooks/useGuestNearby'
+import {
+    guestChats,
+    guestGroups,
+    guestPublicGroups
+} from '../mocks/guestData'
 
-export default function HomePage() {
+function NearbyRoutePage({ isGuest = false }) {
+    const nearby = useNearby()
+    const guestNearby = useGuestNearby()
+    const nearbyState = isGuest ? guestNearby : nearby
+
+    return (
+        <MainLayout
+            section="nearby"
+            sidebar={<NearbyScreen mode="sidebar" nearby={nearbyState} />}
+            main={<NearbyScreen mode="detail" nearby={nearbyState} />}
+        />
+    )
+}
+
+export default function HomePage({
+    basePath = '/home',
+    isGuest = false
+}) {
     const navigate = useNavigate()
     const location = useLocation()
     const dispatch = useDispatch()
@@ -23,12 +49,26 @@ export default function HomePage() {
 
     // Default redirect to chats
     useEffect(() => {
-        if (location.pathname === '/home' || location.pathname === '/home/') {
-            navigate('/home/chats', { replace: true })
+        if (
+            location.pathname === basePath ||
+            location.pathname === `${basePath}/`
+        ) {
+            navigate(`${basePath}/chats`, { replace: true })
         }
-    }, [location, navigate])
+    }, [basePath, location.pathname, navigate])
+
+    useEffect(() => {
+        if (!isGuest) return
+
+        dispatch(setChatList(guestChats))
+        dispatch(setActiveChat(null))
+        dispatch(setMyGroups(guestGroups))
+        dispatch(setPublicGroups(guestPublicGroups))
+        dispatch(setActiveGroup(null))
+    }, [dispatch, isGuest])
 
     const handleCall = (callType) => {
+        if (isGuest) return
         if (!activeChat) return
         navigate(`/call/${activeChat._id}?type=${callType}`)
     }
@@ -57,9 +97,15 @@ export default function HomePage() {
                     <MainLayout
                         section="chats"
                         detailOpen={Boolean(activeChat)}
-                        sidebar={<ChatList onSelectChat={handleSelectChat} />}
+                        sidebar={
+                            <ChatList
+                                isGuest={isGuest}
+                                onSelectChat={handleSelectChat}
+                            />
+                        }
                         main={
                             <ChatScreen
+                                isGuest={isGuest}
                                 onCall={handleCall}
                                 onBack={handleBackToChats}
                             />
@@ -75,22 +121,24 @@ export default function HomePage() {
                         section="groups"
                         detailOpen={Boolean(activeGroup)}
                         sidebar={
-                            <GroupList onSelectGroup={handleSelectGroup} />
+                            <GroupList
+                                isGuest={isGuest}
+                                onSelectGroup={handleSelectGroup}
+                            />
                         }
-                        main={<GroupScreen onBack={handleBackToGroups} />}
+                        main={
+                            <GroupScreen
+                                isGuest={isGuest}
+                                onBack={handleBackToGroups}
+                            />
+                        }
                     />
                 }
             />
 
             <Route
                 path="nearby"
-                element={
-                    <MainLayout
-                        section="nearby"
-                        sidebar={<NearbyScreen mode="devices" />}
-                        main={<NearbyScreen mode="details" />}
-                    />
-                }
+                element={<NearbyRoutePage isGuest={isGuest} />}
             />
 
             <Route
@@ -98,8 +146,10 @@ export default function HomePage() {
                 element={
                     <MainLayout
                         section="calls"
-                        sidebar={<CallScreen mode="history" />}
-                        main={<CallScreen mode="details" />}
+                        sidebar={
+                            <CallScreen isGuest={isGuest} mode="history" />
+                        }
+                        main={<CallScreen isGuest={isGuest} mode="details" />}
                     />
                 }
             />

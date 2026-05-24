@@ -1,0 +1,142 @@
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.transferCard {
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    background: linear-gradient(180deg, var(--bg-secondary), var(--bg-primary));
+    padding: 14px;
+    box-shadow: var(--shadow-sm);
+}
+
+.transferHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.transferLead {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.transferIcon {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: rgba(23, 104, 172, 0.08);
+    color: var(--accent-secondary);
+    font-weight: 800;
+}
+
+.transferInfo {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.fileName {
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.peerMeta,
+.metaText {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+
+.statusBadge {
+    flex-shrink: 0;
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(23, 104, 172, 0.08);
+}
+
+.progressTrack {
+    width: 100%;
+    height: 8px;
+    margin: 14px 0 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--bg-tertiary);
+}
+
+.progressFill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(
+        90deg,
+        var(--accent-primary),
+        var(--accent-secondary)
+    );
+    transition: width 0.28s ease;
+}
+
+.metaRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.statusSending {
+    color: var(--accent-primary);
+    background: var(--accent-light);
+}
+
+.statusRequesting {
+    color: var(--accent-secondary);
+    background: rgba(23, 104, 172, 0.12);
+}
+
+.statusConnecting {
+    color: var(--info-color);
+    background: rgba(37, 99, 235, 0.12);
+}
+
+.statusReceiving {
+    color: var(--warning-color);
+    background: rgba(217, 119, 6, 0.12);
+}
+
+.statusDone {
+    color: var(--success-color);
+    background: rgba(22, 163, 74, 0.12);
+}
+
+.statusFailed {
+    color: var(--error-color);
+    background: rgba(220, 38, 38, 0.12);
+}
+
+.statusDeclined,
+.statusCancelled {
+    color: var(--text-secondary);
+    background: rgba(124, 144, 139, 0.16);
+}
+
+@media (max-width: 767px) {
+    .transferHeader {
+        flex-direction: column;
+    }
+
+    .statusBadge {
+        align-self: flex-start;
+    }
+}

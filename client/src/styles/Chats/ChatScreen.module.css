@@ -167,6 +167,30 @@
     background-color: transparent;
 }
 
+.guestBanner {
+    padding: 12px 16px;
+    background-color: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.guestBannerLink {
+    color: var(--accent-primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.guestBannerLink:hover {
+    text-decoration: underline;
+}
+
 @media (max-width: 767px) {
     .messages {
         padding: 12px;

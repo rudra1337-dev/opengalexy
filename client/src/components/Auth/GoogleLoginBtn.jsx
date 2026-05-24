@@ -1,7 +1,11 @@
+import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
+import { enterGuestMode } from '../../redux/slices/authSlice'
+import { guestUser } from '../../mocks/guestData'
 import styles from '../../styles/Auth/GoogleLoginBtn.module.css'
 
 export default function GoogleLoginBtn() {
+    const dispatch = useDispatch()
     const navigate = useNavigate()
     const API_URL = import.meta.env.VITE_API_BASE_URL
 
@@ -15,7 +19,8 @@ export default function GoogleLoginBtn() {
     }
 
     const handleGuestBrowse = () => {
-        navigate('/home')
+        dispatch(enterGuestMode(guestUser))
+        navigate('/guest')
     }
 
     return (

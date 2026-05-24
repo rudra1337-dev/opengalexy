@@ -14,8 +14,9 @@ import ChatHeader from './ChatHeader'
 import MessageBubble from './MessageBubble'
 import InputBar from './InputBar'
 import styles from '../../styles/Chats/ChatScreen.module.css'
+import { guestChatMessages } from '../../mocks/guestData'
 
-export default function ChatScreen({ onCall, onBack }) {
+export default function ChatScreen({ onCall, onBack, isGuest = false }) {
     const dispatch = useDispatch()
     const { activeChat, activeMessages, isLoadingMessages } = useSelector(
         (state) => state.chats
@@ -32,6 +33,12 @@ export default function ChatScreen({ onCall, onBack }) {
     useEffect(() => {
         if (!activeChat) return
 
+        if (isGuest) {
+            dispatch(setActiveMessages(guestChatMessages[activeChat._id] || []))
+            dispatch(setLoadingMessages(false))
+            return
+        }
+
         const loadMessages = async () => {
             dispatch(setLoadingMessages(true))
             try {
@@ -45,9 +52,10 @@ export default function ChatScreen({ onCall, onBack }) {
         }
 
         loadMessages()
-    }, [activeChat, dispatch])
+    }, [activeChat, dispatch, isGuest])
 
     useEffect(() => {
+        if (isGuest) return
         if (!socket || !activeChat?._id) return
 
         socket.emit('join-room', activeChat._id)
@@ -55,9 +63,10 @@ export default function ChatScreen({ onCall, onBack }) {
         return () => {
             socket.emit('leave-room', activeChat._id)
         }
-    }, [socket, activeChat])
+    }, [socket, activeChat, isGuest])
 
     useEffect(() => {
+        if (isGuest) return
         if (!socket || !activeChat) return
 
         socket.on('message-received', (message) => {
@@ -89,9 +98,10 @@ export default function ChatScreen({ onCall, onBack }) {
             socket.off('user-typing')
             socket.off('user-stop-typing')
         }
-    }, [socket, activeChat, dispatch])
+    }, [socket, activeChat, dispatch, isGuest])
 
     useEffect(() => {
+        if (isGuest) return
         if (!socket || !activeChat || !user?._id) return
 
         activeMessages
@@ -106,9 +116,10 @@ export default function ChatScreen({ onCall, onBack }) {
                     roomId: activeChat._id
                 })
             })
-    }, [socket, activeChat, activeMessages, user])
+    }, [socket, activeChat, activeMessages, user, isGuest])
 
     const handleSendMessage = async (data) => {
+        if (isGuest) return
         if (!activeChat) return
 
         try {
@@ -140,6 +151,7 @@ export default function ChatScreen({ onCall, onBack }) {
     }
 
     const handleTyping = (isTyping) => {
+        if (isGuest) return
         if (socket && activeChat) {
             if (isTyping) {
                 socket.emit('typing', {
@@ -234,11 +246,20 @@ export default function ChatScreen({ onCall, onBack }) {
                 <div ref={messagesEndRef} />
             </div>
 
-            <InputBar
-                onSendMessage={handleSendMessage}
-                onTyping={handleTyping}
-                isLoading={isLoadingMessages}
-            />
+            {isGuest ? (
+                <div className={styles.guestBanner}>
+                    <span>You&apos;re browsing as guest.</span>
+                    <a href="/" className={styles.guestBannerLink}>
+                        Sign in to send messages →
+                    </a>
+                </div>
+            ) : (
+                <InputBar
+                    onSendMessage={handleSendMessage}
+                    onTyping={handleTyping}
+                    isLoading={isLoadingMessages}
+                />
+            )}
         </div>
     )
 }

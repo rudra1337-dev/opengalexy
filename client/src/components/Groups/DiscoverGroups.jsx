@@ -7,13 +7,18 @@ import {
 import { groupService } from '../../services/groupService'
 import styles from '../../styles/Groups/DiscoverGroups.module.css'
 
-export default function DiscoverGroups({ onJoinGroup }) {
+export default function DiscoverGroups({ onJoinGroup, isGuest = false }) {
     const dispatch = useDispatch()
     const { publicGroups } = useSelector((state) => state.groups)
     const { myGroups } = useSelector((state) => state.groups)
     const [isLoading, setIsLoading] = useState(false)
 
     useEffect(() => {
+        if (isGuest) {
+            setIsLoading(false)
+            return
+        }
+
         const loadPublicGroups = async () => {
             setIsLoading(true)
             try {
@@ -27,9 +32,10 @@ export default function DiscoverGroups({ onJoinGroup }) {
         }
 
         loadPublicGroups()
-    }, [dispatch])
+    }, [dispatch, isGuest])
 
     const handleJoin = async (inviteCode) => {
+        if (isGuest) return
         try {
             const response = await groupService.joinGroup(inviteCode)
             dispatch(addGroupToMyGroups(response.data.group))
@@ -96,12 +102,15 @@ export default function DiscoverGroups({ onJoinGroup }) {
                                             : ''
                                     }`}
                                     onClick={() =>
+                                        !isGuest &&
                                         !isAlreadyMember(group._id) &&
                                         handleJoin(group.inviteCode)
                                     }
-                                    disabled={isAlreadyMember(group._id)}
+                                    disabled={isGuest || isAlreadyMember(group._id)}
                                 >
-                                    {isAlreadyMember(group._id)
+                                    {isGuest
+                                        ? 'Preview only'
+                                        : isAlreadyMember(group._id)
                                         ? '✓ Joined'
                                         : 'Join Group'}
                                 </button>

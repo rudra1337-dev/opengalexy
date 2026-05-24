@@ -11,8 +11,9 @@ import GroupHeader from './GroupHeader'
 import MessageBubble from '../Chats/MessageBubble'
 import InputBar from '../Chats/InputBar'
 import styles from '../../styles/Groups/GroupScreen.module.css'
+import { guestGroupMessages } from '../../mocks/guestData'
 
-export default function GroupScreen({ onSettings, onBack }) {
+export default function GroupScreen({ onSettings, onBack, isGuest = false }) {
     const dispatch = useDispatch()
     const { activeGroup, activeGroupMessages } = useSelector(
         (state) => state.groups
@@ -29,6 +30,13 @@ export default function GroupScreen({ onSettings, onBack }) {
     useEffect(() => {
         if (!activeGroup?.room) return
 
+        if (isGuest) {
+            dispatch(
+                setActiveGroupMessages(guestGroupMessages[activeGroup._id] || [])
+            )
+            return
+        }
+
         const loadMessages = async () => {
             try {
                 const response = await chatService.getMessages(activeGroup.room)
@@ -39,9 +47,10 @@ export default function GroupScreen({ onSettings, onBack }) {
         }
 
         loadMessages()
-    }, [activeGroup, dispatch])
+    }, [activeGroup, dispatch, isGuest])
 
     useEffect(() => {
+        if (isGuest) return
         if (!socket || !activeGroup?.room) return
 
         socket.emit('join-room', activeGroup.room)
@@ -49,9 +58,10 @@ export default function GroupScreen({ onSettings, onBack }) {
         return () => {
             socket.emit('leave-room', activeGroup.room)
         }
-    }, [socket, activeGroup])
+    }, [socket, activeGroup, isGuest])
 
     useEffect(() => {
+        if (isGuest) return
         if (!socket || !activeGroup?.room) return
 
         socket.on('message-received', (message) => {
@@ -73,9 +83,10 @@ export default function GroupScreen({ onSettings, onBack }) {
             socket.off('user-typing')
             socket.off('user-stop-typing')
         }
-    }, [socket, activeGroup, dispatch])
+    }, [socket, activeGroup, dispatch, isGuest])
 
     const handleSendMessage = (data) => {
+        if (isGuest) return
         if (!activeGroup?.room || !socket) return
 
         // Optimistic update
@@ -103,6 +114,7 @@ export default function GroupScreen({ onSettings, onBack }) {
     }
 
     const handleTyping = (isTyping) => {
+        if (isGuest) return
         if (!socket || !activeGroup?.room) return
         if (isTyping) {
             socket.emit('typing', {
@@ -194,7 +206,7 @@ export default function GroupScreen({ onSettings, onBack }) {
                 <div ref={messagesEndRef} />
             </div>
 
-            {user ? (
+            {!isGuest && user ? (
                 <div className={styles.input}>
                     <InputBar
                         onSendMessage={handleSendMessage}

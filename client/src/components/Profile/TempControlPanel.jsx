@@ -1,21 +1,26 @@
 import { useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { setUser } from '../../redux/slices/authSlice'
+import { updateUser } from '../../redux/slices/authSlice'
 import api from '../../services/api'
 import styles from '../../styles/Profile/TempControlPanel.module.css'
 
 export default function TempControlPanel() {
     const dispatch = useDispatch()
-    const { user } = useSelector((state) => state.auth)
+    const { user, sessionMode } = useSelector((state) => state.auth)
     const [isUpdating, setIsUpdating] = useState(false)
 
     const handleToggle = async (field, value) => {
         setIsUpdating(true)
         try {
+            if (sessionMode === 'guest') {
+                dispatch(updateUser({ [field]: value }))
+                return
+            }
+
             const response = await api.patch('/users/settings', {
                 [field]: value
             })
-            dispatch(setUser(response.data.user))
+            dispatch(updateUser(response.data.user))
         } catch (error) {
             console.error('Error updating settings:', error)
         } finally {

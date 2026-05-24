@@ -6,7 +6,7 @@ import { chatService } from '../../services/chatService'
 import ChatItem from './ChatItem'
 import styles from '../../styles/Chats/ChatList.module.css'
 
-export default function ChatList({ onSelectChat }) {
+export default function ChatList({ onSelectChat, isGuest = false }) {
     const dispatch = useDispatch()
     const { chatList, activeChat } = useSelector((state) => state.chats)
     const { user } = useSelector((state) => state.auth)
@@ -15,6 +15,11 @@ export default function ChatList({ onSelectChat }) {
     const [activeFilter, setActiveFilter] = useState('all')
 
     useEffect(() => {
+        if (isGuest) {
+            dispatch(setLoading({ key: 'fetchingChats', value: false }))
+            return
+        }
+
         const loadChats = async () => {
             dispatch(setLoading({ key: 'fetchingChats', value: true }))
             try {
@@ -28,7 +33,7 @@ export default function ChatList({ onSelectChat }) {
         }
 
         loadChats()
-    }, [dispatch])
+    }, [dispatch, isGuest])
 
     const filteredChats = chatList.filter((chat) => {
         const otherUser = chat.members?.find(

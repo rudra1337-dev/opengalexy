@@ -1,12 +1,16 @@
 import { NavLink } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import styles from '../../styles/Layout/BottomNav.module.css'
 
 export default function BottomNav() {
+    const { sessionMode } = useSelector((state) => state.auth)
+    const basePath = sessionMode === 'guest' ? '/guest' : '/home'
+
     return (
         <nav className={styles.nav}>
             <div className={styles.items}>
                 <NavLink
-                    to="/home/chats"
+                    to={`${basePath}/chats`}
                     className={({ isActive }) =>
                         `${styles.item} ${isActive ? styles.active : ''}`
                     }
@@ -16,7 +20,7 @@ export default function BottomNav() {
                 </NavLink>
 
                 <NavLink
-                    to="/home/groups"
+                    to={`${basePath}/groups`}
                     className={({ isActive }) =>
                         `${styles.item} ${isActive ? styles.active : ''}`
                     }
@@ -26,7 +30,7 @@ export default function BottomNav() {
                 </NavLink>
 
                 <NavLink
-                    to="/home/nearby"
+                    to={`${basePath}/nearby`}
                     className={({ isActive }) =>
                         `${styles.item} ${isActive ? styles.active : ''}`
                     }
@@ -36,7 +40,7 @@ export default function BottomNav() {
                 </NavLink>
 
                 <NavLink
-                    to="/home/calls"
+                    to={`${basePath}/calls`}
                     className={({ isActive }) =>
                         `${styles.item} ${isActive ? styles.active : ''}`
                     }

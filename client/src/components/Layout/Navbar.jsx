@@ -17,9 +17,10 @@ const sectionLabels = {
 export default function Navbar({ section = 'chats' }) {
     const dispatch = useDispatch()
     const navigate = useNavigate()
-    const { user } = useSelector((state) => state.auth)
+    const { user, sessionMode } = useSelector((state) => state.auth)
     const [menuOpen, setMenuOpen] = useState(false)
     const menuRef = useRef(null)
+    const basePath = sessionMode === 'guest' ? '/guest' : '/home'
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -35,7 +36,9 @@ export default function Navbar({ section = 'chats' }) {
 
     const handleLogout = async () => {
         try {
-            await authService.logout()
+            if (sessionMode === 'authenticated') {
+                await authService.logout()
+            }
             dispatch(clearAuth())
             navigate('/')
             setMenuOpen(false)
@@ -62,7 +65,7 @@ export default function Navbar({ section = 'chats' }) {
                 <button
                     className={styles.userAvatar}
                     title={user?.displayName}
-                    onClick={() => navigate('/home/profile')}
+                    onClick={() => navigate(`${basePath}/profile`)}
                 >
                     {user?.displayName?.charAt(0).toUpperCase()}
                 </button>
@@ -81,7 +84,7 @@ export default function Navbar({ section = 'chats' }) {
                             <button
                                 className={styles.menuItem}
                                 onClick={() => {
-                                    navigate('/home/profile')
+                                    navigate(`${basePath}/profile`)
                                     setMenuOpen(false)
                                 }}
                             >
@@ -91,7 +94,7 @@ export default function Navbar({ section = 'chats' }) {
                             <button
                                 className={styles.menuItem}
                                 onClick={() => {
-                                    navigate('/home/calls')
+                                    navigate(`${basePath}/calls`)
                                     setMenuOpen(false)
                                 }}
                             >
@@ -103,7 +106,11 @@ export default function Navbar({ section = 'chats' }) {
                                 onClick={handleLogout}
                             >
                                 <span>🚪</span>
-                                <span>Logout</span>
+                                <span>
+                                    {sessionMode === 'guest'
+                                        ? 'Exit guest mode'
+                                        : 'Logout'}
+                                </span>
                             </button>
                         </div>
                     )}

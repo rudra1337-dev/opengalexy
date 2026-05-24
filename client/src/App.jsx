@@ -59,7 +59,7 @@ function AuthLoadingScreen() {
 }
 
 function LandingRoute({ children }) {
-    const { isAuthenticated, usernameSet, isLoading } = useSelector(
+    const { isAuthenticated, usernameSet, isLoading, sessionMode } = useSelector(
         (state) => state.auth
     )
 
@@ -69,6 +69,10 @@ function LandingRoute({ children }) {
 
     if (isAuthenticated) {
         return <Navigate to={usernameSet ? '/home' : '/onboarding'} replace />
+    }
+
+    if (sessionMode === 'guest') {
+        return <Navigate to="/guest" replace />
     }
 
     return children
@@ -95,7 +99,7 @@ function OnboardingRoute({ children }) {
 }
 
 function ProtectedRoute({ children }) {
-    const { isAuthenticated, usernameSet, isLoading } = useSelector(
+    const { isAuthenticated, usernameSet, isLoading, sessionMode } = useSelector(
         (state) => state.auth
     )
 
@@ -104,7 +108,7 @@ function ProtectedRoute({ children }) {
     }
 
     if (!isAuthenticated) {
-        return <Navigate to="/" replace />
+        return <Navigate to={sessionMode === 'guest' ? '/guest' : '/'} replace />
     }
 
     if (!usernameSet) {
@@ -114,27 +118,68 @@ function ProtectedRoute({ children }) {
     return children
 }
 
+function GuestRoute({ children }) {
+    const { isAuthenticated, sessionMode, isLoading, usernameSet } = useSelector(
+        (state) => state.auth
+    )
+
+    if (isLoading) {
+        return <AuthLoadingScreen />
+    }
+
+    if (isAuthenticated) {
+        return <Navigate to={usernameSet ? '/home' : '/onboarding'} replace />
+    }
+
+    if (sessionMode !== 'guest') {
+        return <Navigate to="/" replace />
+    }
+
+    return children
+}
+
 function App() {
     const dispatch = useDispatch()
-    const { user, isAuthenticated } = useSelector((state) => state.auth)
+    const { user, isAuthenticated, sessionMode } = useSelector(
+        (state) => state.auth
+    )
 
     // Check if user is already logged in on app load
     useEffect(() => {
+        let cancelled = false
+
+        if (sessionMode === 'guest') {
+            dispatch(setLoading(false))
+            return () => {
+                cancelled = true
+            }
+        }
+
         const checkAuth = async () => {
             dispatch(setLoading(true))
             try {
                 const sessionUser = await getBootstrappedUser()
-                dispatch(setUser(sessionUser))
+                if (!cancelled) {
+                    dispatch(setUser(sessionUser))
+                }
             } catch (error) {
                 console.error('Error checking auth session:', error)
-                dispatch(setUser(null))
+                if (!cancelled) {
+                    dispatch(setUser(null))
+                }
             } finally {
-                dispatch(setLoading(false))
+                if (!cancelled) {
+                    dispatch(setLoading(false))
+                }
             }
         }
 
         checkAuth()
-    }, [dispatch])
+
+        return () => {
+            cancelled = true
+        }
+    }, [dispatch, sessionMode])
 
     useEffect(() => {
         const handleUnauthorized = () => {
@@ -153,7 +198,7 @@ function App() {
 
     // Initialize Socket.io when user is authenticated
     useEffect(() => {
-        if (isAuthenticated && user) {
+        if (sessionMode === 'authenticated' && isAuthenticated && user) {
             const socket = initSocket(user._id)
             dispatch(setSocket(socket))
 
@@ -171,7 +216,7 @@ function App() {
                 socket.disconnect()
             }
         }
-    }, [isAuthenticated, user, dispatch])
+    }, [isAuthenticated, user, dispatch, sessionMode])
 
     return (
         <Router>
@@ -199,6 +244,15 @@ function App() {
                         <ProtectedRoute>
                             <HomePage />
                         </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/guest/*"
+                    element={
+                        <GuestRoute>
+                            <HomePage basePath="/guest" isGuest />
+                        </GuestRoute>
                     }
                 />
 

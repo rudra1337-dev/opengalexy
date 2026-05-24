@@ -5,6 +5,8 @@ import User from '../models/User.model.js'
 import { getConfiguredClientOrigins } from '../utils/clientOrigin.js'
 
 let io
+const nearbyPresence = new Map()
+const activeNearbyTransfers = new Map()
 
 const initSocket = (server) => {
     io = new Server(server, {
@@ -17,6 +19,37 @@ const initSocket = (server) => {
 
     io.on('connection', (socket) => {
         console.log(`⚡ Socket connected: ${socket.id}`)
+
+        const broadcastNearbyUserJoined = (device, exceptUserId = null) => {
+            nearbyPresence.forEach((_, userId) => {
+                if (userId === exceptUserId) return
+                io.to(userId).emit('nearby-user-joined', device)
+            })
+        }
+
+        const removeNearbyPresence = () => {
+            if (!socket.userId) return
+
+            const existingPresence = nearbyPresence.get(socket.userId)
+            if (!existingPresence || existingPresence.socketId !== socket.id) return
+
+            nearbyPresence.delete(socket.userId)
+            io.emit('nearby-user-left', { userId: socket.userId })
+        }
+
+        const cancelTransfersForUser = (userId, reason = 'peer_left') => {
+            for (const [requestId, transfer] of activeNearbyTransfers.entries()) {
+                if (transfer.from !== userId && transfer.to !== userId) continue
+
+                const peerId = transfer.from === userId ? transfer.to : transfer.from
+                io.to(peerId).emit('nearby-transfer-cancelled', {
+                    requestId,
+                    reason,
+                    from: userId
+                })
+                activeNearbyTransfers.delete(requestId)
+            }
+        }
 
         // ── USER COMES ONLINE ──────────────────────────
         socket.on('user-online', async (userId) => {
@@ -135,24 +168,117 @@ const initSocket = (server) => {
             io.to(to).emit('call-ended')
         })
 
+        // ── NEARBY SHARE DISCOVERY ─────────────────────
+        socket.on('nearby-announce', ({ userId, username }) => {
+            const resolvedUserId = socket.userId || userId
+            if (!resolvedUserId) return
+
+            socket.userId = resolvedUserId
+            socket.join(resolvedUserId)
+
+            const device = {
+                userId: resolvedUserId,
+                username,
+                isAvailable: true
+            }
+
+            nearbyPresence.set(resolvedUserId, {
+                ...device,
+                socketId: socket.id
+            })
+
+            const devices = Array.from(nearbyPresence.values())
+                .filter((entry) => entry.userId !== resolvedUserId)
+                .map(({ socketId, ...entry }) => entry)
+
+            socket.emit('nearby-users', devices)
+            broadcastNearbyUserJoined(device, resolvedUserId)
+        })
+
+        socket.on('nearby-leave', () => {
+            removeNearbyPresence()
+            cancelTransfersForUser(socket.userId, 'peer_left')
+        })
+
+        socket.on('nearby-transfer-request', ({ requestId, to, file }) => {
+            if (!socket.userId || !requestId || !to || !file) return
+
+            activeNearbyTransfers.set(requestId, {
+                requestId,
+                from: socket.userId,
+                to,
+                file,
+                status: 'requested',
+                createdAt: Date.now()
+            })
+
+            io.to(to).emit('nearby-transfer-request', {
+                requestId,
+                from: socket.userId,
+                fromUsername:
+                    nearbyPresence.get(socket.userId)?.username || 'unknown',
+                file
+            })
+        })
+
+        socket.on(
+            'nearby-transfer-response',
+            ({ requestId, to, accepted, reason = null }) => {
+                const transfer = activeNearbyTransfers.get(requestId)
+                if (!transfer) return
+
+                if (!accepted) {
+                    activeNearbyTransfers.delete(requestId)
+                } else {
+                    activeNearbyTransfers.set(requestId, {
+                        ...transfer,
+                        status: 'accepted'
+                    })
+                }
+
+                io.to(to).emit('nearby-transfer-response', {
+                    requestId,
+                    accepted,
+                    from: socket.userId,
+                    reason
+                })
+            }
+        )
+
         // ── NEARBY SHARE SIGNALING ─────────────────────
-        socket.on('nearby-offer', ({ to, offer }) => {
+        socket.on('nearby-offer', ({ to, requestId, offer }) => {
             io.to(to).emit('nearby-offer', {
                 from: socket.userId,
+                requestId,
                 offer
             })
         })
 
-        socket.on('nearby-answer', ({ to, answer }) => {
-            io.to(to).emit('nearby-answer', { answer })
+        socket.on('nearby-answer', ({ to, requestId, answer }) => {
+            io.to(to).emit('nearby-answer', { requestId, answer })
         })
 
-        socket.on('nearby-ice-candidate', ({ to, candidate }) => {
-            io.to(to).emit('nearby-ice-candidate', { candidate })
+        socket.on('nearby-ice-candidate', ({ to, requestId, candidate }) => {
+            io.to(to).emit('nearby-ice-candidate', { requestId, candidate })
+        })
+
+        socket.on('nearby-transfer-complete', ({ requestId }) => {
+            activeNearbyTransfers.delete(requestId)
+        })
+
+        socket.on('nearby-transfer-cancel', ({ requestId, to, reason }) => {
+            activeNearbyTransfers.delete(requestId)
+            io.to(to).emit('nearby-transfer-cancelled', {
+                requestId,
+                reason,
+                from: socket.userId
+            })
         })
 
         // ── DISCONNECT ─────────────────────────────────
         socket.on('disconnect', async () => {
+            removeNearbyPresence()
+
             if (socket.userId) {
                 await User.findByIdAndUpdate(socket.userId, {
                     isOnline: false,
@@ -164,6 +290,8 @@ const initSocket = (server) => {
                 })
                 console.log(`🔴 User offline: ${socket.userId}`)
             }
+
+            cancelTransfersForUser(socket.userId)
             console.log(`❌ Socket disconnected: ${socket.id}`)
         })
     })

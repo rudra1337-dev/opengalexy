@@ -8,12 +8,14 @@ import styles from '../../styles/Profile/SettingsPanel.module.css'
 export default function SettingsPanel() {
     const dispatch = useDispatch()
     const navigate = useNavigate()
-    const { user } = useSelector((state) => state.auth)
+    const { user, sessionMode } = useSelector((state) => state.auth)
     const { isDark, toggleTheme } = useTheme()
 
     const handleLogout = async () => {
         try {
-            await authService.logout()
+            if (sessionMode === 'authenticated') {
+                await authService.logout()
+            }
             dispatch(clearAuth())
             navigate('/')
         } catch (error) {
@@ -122,7 +124,7 @@ export default function SettingsPanel() {
                 className={`${styles.logoutBtn} w-full py-3 rounded-xl text-sm font-semibold cursor-pointer mt-2`}
                 onClick={handleLogout}
             >
-                🚪 Sign Out
+                🚪 {sessionMode === 'guest' ? 'Exit Guest Mode' : 'Sign Out'}
             </button>
 
             {/* Version */}

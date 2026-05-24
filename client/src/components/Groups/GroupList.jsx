@@ -7,7 +7,7 @@ import GroupCreatorModal from './GroupCreatorModal'
 import DiscoverGroups from './DiscoverGroups'
 import styles from '../../styles/Groups/GroupList.module.css'
 
-export default function GroupList({ onSelectGroup }) {
+export default function GroupList({ onSelectGroup, isGuest = false }) {
     const dispatch = useDispatch()
     const { myGroups, activeGroup } = useSelector((state) => state.groups)
     const [activeTab, setActiveTab] = useState('mine') // 'mine' | 'discover'
@@ -17,6 +17,11 @@ export default function GroupList({ onSelectGroup }) {
 
     // Load my groups on mount
     useEffect(() => {
+        if (isGuest) {
+            setIsLoading(false)
+            return
+        }
+
         const loadGroups = async () => {
             setIsLoading(true)
             try {
@@ -30,7 +35,7 @@ export default function GroupList({ onSelectGroup }) {
         }
 
         loadGroups()
-    }, [dispatch])
+    }, [dispatch, isGuest])
 
     const filteredGroups = myGroups.filter((group) =>
         group.name?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -56,8 +61,14 @@ export default function GroupList({ onSelectGroup }) {
                     <button
                         type="button"
                         className={styles.createBtn}
-                        onClick={() => setShowCreator(true)}
-                        title="Create group"
+                        onClick={() => {
+                            if (!isGuest) setShowCreator(true)
+                        }}
+                        title={
+                            isGuest
+                                ? 'Sign in to create groups'
+                                : 'Create group'
+                        }
                     >
                         ✦
                     </button>
@@ -131,6 +142,7 @@ export default function GroupList({ onSelectGroup }) {
                     )
                 ) : (
                     <DiscoverGroups
+                        isGuest={isGuest}
                         onJoinGroup={(group) => {
                             dispatch(setMyGroups([...myGroups, group]))
                             setActiveTab('mine')
@@ -139,7 +151,7 @@ export default function GroupList({ onSelectGroup }) {
                 )}
             </div>
 
-            {showCreator && (
+            {showCreator && !isGuest && (
                 <GroupCreatorModal onClose={() => setShowCreator(false)} />
             )}
         </div>

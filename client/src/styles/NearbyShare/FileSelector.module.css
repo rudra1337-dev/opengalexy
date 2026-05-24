@@ -1,0 +1,163 @@
+.hiddenInput {
+    display: none;
+}
+
+.dropzone,
+.fileCard {
+    border-radius: 22px;
+    border: 1px solid var(--border-color);
+    background: linear-gradient(180deg, var(--bg-secondary), var(--bg-primary));
+    transition: var(--transition);
+}
+
+.dropzone {
+    padding: 24px 18px;
+    text-align: center;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    border-style: dashed;
+}
+
+.dropzone:hover,
+.dragging {
+    border-color: rgba(15, 157, 121, 0.34);
+    background:
+        radial-gradient(circle at top, var(--accent-light), transparent 42%),
+        linear-gradient(180deg, var(--bg-secondary), var(--bg-primary));
+    transform: translateY(-1px);
+}
+
+.dropIconWrap,
+.fileIconWrap {
+    width: 58px;
+    height: 58px;
+    border-radius: 20px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(
+        145deg,
+        rgba(15, 157, 121, 0.16),
+        rgba(23, 104, 172, 0.16)
+    );
+}
+
+.dropIcon,
+.fileIcon {
+    font-size: 1.8rem;
+}
+
+.dropTitle,
+.fileName {
+    color: var(--text-primary);
+}
+
+.dropTitle {
+    font-size: 1rem;
+}
+
+.dropText {
+    margin: 0;
+    max-width: 32ch;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+}
+
+.dropMeta,
+.fileMetaRow,
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.metaPill {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    background: rgba(23, 104, 172, 0.08);
+}
+
+.fileCard {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.fileLead {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.fileMeta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.fileName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.actions {
+    justify-content: flex-end;
+}
+
+.replaceBtn,
+.removeBtn {
+    border: none;
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 0.82rem;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.replaceBtn {
+    color: var(--text-primary);
+    background: rgba(23, 104, 172, 0.08);
+}
+
+.replaceBtn:hover {
+    background: rgba(23, 104, 172, 0.14);
+}
+
+.removeBtn {
+    color: var(--error-color);
+    background: rgba(220, 38, 38, 0.1);
+}
+
+.removeBtn:hover {
+    background: rgba(220, 38, 38, 0.16);
+}
+
+@media (max-width: 767px) {
+    .dropzone {
+        padding: 20px 14px;
+    }
+
+    .fileLead {
+        align-items: flex-start;
+    }
+
+    .actions {
+        justify-content: stretch;
+    }
+
+    .replaceBtn,
+    .removeBtn {
+        flex: 1;
+    }
+}

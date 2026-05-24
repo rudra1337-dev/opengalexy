@@ -4,20 +4,20 @@ import Navbar from './Navbar'
 import BottomNav from './BottomNav'
 import styles from '../../styles/Layout/MainLayout.module.css'
 
-const navigationItems = [
-    { to: '/home/chats', icon: '💬', label: 'Chats' },
-    { to: '/home/groups', icon: '👥', label: 'Groups' },
-    { to: '/home/nearby', icon: '📡', label: 'Nearby' },
-    { to: '/home/calls', icon: '📞', label: 'Calls' }
-]
-
 export default function MainLayout({
     section,
     sidebar,
     main,
     detailOpen = false
 }) {
-    const { user } = useSelector((state) => state.auth)
+    const { user, sessionMode } = useSelector((state) => state.auth)
+    const basePath = sessionMode === 'guest' ? '/guest' : '/home'
+    const navigationItems = [
+        { to: `${basePath}/chats`, icon: '💬', label: 'Chats' },
+        { to: `${basePath}/groups`, icon: '👥', label: 'Groups' },
+        { to: `${basePath}/nearby`, icon: '📡', label: 'Nearby' },
+        { to: `${basePath}/calls`, icon: '📞', label: 'Calls' }
+    ]
 
     return (
         <div className={styles.shell}>
@@ -59,7 +59,7 @@ export default function MainLayout({
 
                     <div className={styles.railFooter}>
                         <NavLink
-                            to="/home/profile"
+                            to={`${basePath}/profile`}
                             className={styles.profileDock}
                         >
                             <div className={styles.profileAvatar}>
