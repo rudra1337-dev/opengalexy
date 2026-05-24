@@ -1,11 +1,13 @@
 import generateToken from '../utils/generateToken.js'
 import User from '../models/User.model.js'
+import { resolveClientOrigin } from '../utils/clientOrigin.js'
 
 // @desc    Google OAuth callback — send JWT to client
 // @route   GET /api/auth/google/callback
 const googleCallback = (req, res) => {
     try {
         const token = generateToken(req.user._id)
+        const clientOrigin = resolveClientOrigin(req.query.state)
 
         const isNewUser = !req.user.usernameSet
 
@@ -17,14 +19,26 @@ const googleCallback = (req, res) => {
         })
 
         // redirect to frontend — new users go to username picker
+        if (!clientOrigin) {
+            return res.status(500).json({
+                message: 'Frontend redirect URL is not configured correctly'
+            })
+        }
+
         if (isNewUser) {
-            res.redirect(`${process.env.CLIENT_URL}/onboarding`)
+            res.redirect(`${clientOrigin}/onboarding`)
         } else {
-            res.redirect(`${process.env.CLIENT_URL}/home`)
+            res.redirect(`${clientOrigin}/home`)
         }
 
     } catch (error) {
-        res.redirect(`${process.env.CLIENT_URL}/login?error=auth_failed`)
+        const clientOrigin = resolveClientOrigin(req.query.state)
+
+        if (!clientOrigin) {
+            return res.status(500).json({ message: 'Authentication failed' })
+        }
+
+        res.redirect(`${clientOrigin}/?error=auth_failed`)
     }
 }
 

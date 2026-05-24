@@ -7,7 +7,11 @@ export default function GoogleLoginBtn() {
 
     const handleGoogleLogin = () => {
         // Redirect to backend Google OAuth
-        window.location.href = `${API_URL.replace('/api', '')}/api/auth/google`
+        const apiOrigin = new URL(API_URL).origin
+        const authUrl = new URL('/api/auth/google', apiOrigin)
+
+        authUrl.searchParams.set('redirect', window.location.origin)
+        window.location.href = authUrl.toString()
     }
 
     const handleGuestBrowse = () => {

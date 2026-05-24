@@ -17,6 +17,7 @@ import groupRoutes from './routes/group.routes.js'
 import nearbyRoutes from './routes/nearby.routes.js'
 
 import errorMiddleware from './middleware/error.middleware.js'
+import { corsOriginDelegate } from './utils/clientOrigin.js'
 
 dotenv.config()  // ← env loads first
 
@@ -28,7 +29,7 @@ const server = http.createServer(app)
 connectDB()
 initSocket(server)
 
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }))
+app.use(cors({ origin: corsOriginDelegate, credentials: true }))
 app.use(express.json())
 app.use(cookieParser())
 app.use(passport.initialize())

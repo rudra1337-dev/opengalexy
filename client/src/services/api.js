@@ -12,9 +12,15 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Unauthorized — clear auth and redirect to login
             localStorage.removeItem('auth_token')
-            window.location.href = '/'
+
+            const requestUrl = error.config?.url || ''
+            const isAuthProbe = requestUrl.includes('/auth/me')
+
+            // Let the app clear session state without forcing a full page reload.
+            if (!isAuthProbe) {
+                window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+            }
         }
         return Promise.reject(error)
     }

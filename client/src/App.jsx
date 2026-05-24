@@ -6,10 +6,13 @@ import {
     Route,
     Navigate
 } from 'react-router-dom'
-import { setUser, setLoading } from './redux/slices/authSlice'
+import { clearAuth, setUser, setLoading } from './redux/slices/authSlice'
 import { setSocket, setConnected } from './redux/slices/socketSlice'
-import api from './services/api'
-import { initSocket } from './services/socketService'
+import { authService } from './services/authService'
+import {
+    initSocket,
+    disconnectSocket
+} from './services/socketService'
 
 // Pages
 import Landing from './pages/Landing'
@@ -17,6 +20,27 @@ import OnboardingPage from './pages/OnboardingPage'
 import HomePage from './pages/HomePage'
 import NotFoundPage from './pages/NotFoundPage'
 import CallPage from './pages/CallPage'
+
+let authBootstrapPromise = null
+
+const getBootstrappedUser = async () => {
+    if (!authBootstrapPromise) {
+        authBootstrapPromise = authService
+            .getMe()
+            .then((response) => response.data.user)
+            .catch((error) => {
+                if (error.response?.status === 401) {
+                    return null
+                }
+                throw error
+            })
+            .finally(() => {
+                authBootstrapPromise = null
+            })
+    }
+
+    return authBootstrapPromise
+}
 
 function AuthLoadingScreen() {
     return (
@@ -99,10 +123,10 @@ function App() {
         const checkAuth = async () => {
             dispatch(setLoading(true))
             try {
-                const response = await api.get('/auth/me')
-                dispatch(setUser(response.data.user))
-            } catch {
-                console.log('Not authenticated')
+                const sessionUser = await getBootstrappedUser()
+                dispatch(setUser(sessionUser))
+            } catch (error) {
+                console.error('Error checking auth session:', error)
                 dispatch(setUser(null))
             } finally {
                 dispatch(setLoading(false))
@@ -110,6 +134,21 @@ function App() {
         }
 
         checkAuth()
+    }, [dispatch])
+
+    useEffect(() => {
+        const handleUnauthorized = () => {
+            disconnectSocket()
+            dispatch(clearAuth())
+            dispatch(setConnected(false))
+            dispatch(setLoading(false))
+        }
+
+        window.addEventListener('auth:unauthorized', handleUnauthorized)
+
+        return () => {
+            window.removeEventListener('auth:unauthorized', handleUnauthorized)
+        }
     }, [dispatch])
 
     // Initialize Socket.io when user is authenticated

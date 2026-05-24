@@ -2,13 +2,14 @@ import { Server } from 'socket.io'
 import Message from '../models/Message.model.js'
 import Room from '../models/Room.model.js'
 import User from '../models/User.model.js'
+import { getConfiguredClientOrigins } from '../utils/clientOrigin.js'
 
 let io
 
 const initSocket = (server) => {
     io = new Server(server, {
         cors: {
-            origin: process.env.CLIENT_URL,
+            origin: getConfiguredClientOrigins(),
             methods: ['GET', 'POST'],
             credentials: true
         }
