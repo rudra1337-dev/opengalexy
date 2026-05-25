@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux'
 import styles from '../../styles/Profile/ProfileCard.module.css'
 
 export default function ProfileCard() {
-    const { user } = useSelector((state) => state.auth)
+    const { user, sessionMode } = useSelector((state) => state.auth)
     const [copied, setCopied] = useState(false)
 
     const handleCopyId = () => {
@@ -15,108 +15,91 @@ export default function ProfileCard() {
     if (!user) return null
 
     return (
-        <div className="flex flex-col items-center py-8 px-6">
-            {/* Avatar */}
-            <div className="relative mb-4">
-                <div
-                    className={`${styles.avatar} w-24 h-24 rounded-full flex items-center justify-center`}
-                >
-                    {user.avatar ? (
-                        <img
-                            src={user.avatar}
-                            alt={user.displayName}
-                            className={styles.avatarImg}
-                        />
-                    ) : (
-                        user.displayName?.charAt(0).toUpperCase()
-                    )}
+        <div className={styles.card}>
+            <div className={styles.identityBlock}>
+                <div className={styles.avatarShell}>
+                    <div className={styles.avatar}>
+                        {user.avatar ? (
+                            <img
+                                src={user.avatar}
+                                alt={user.displayName}
+                                className={styles.avatarImg}
+                            />
+                        ) : (
+                            user.displayName?.charAt(0).toUpperCase()
+                        )}
+                    </div>
+                    <div className={styles.onlineBadge}></div>
                 </div>
-                {/* Online badge */}
-                <div
-                    className={`${styles.onlineBadge} absolute bottom-1 right-1 w-4 h-4 rounded-full`}
-                ></div>
+
+                <div className={styles.identityCopy}>
+                    <p className={styles.overline}>Profile snapshot</p>
+                    <h2 className={styles.name}>{user.displayName}</h2>
+                    <div className={styles.handleRow}>
+                        <span className={styles.handle}>@{user.username}</span>
+                        <button
+                            onClick={handleCopyId}
+                            className={`${styles.copyBtn} ${copied ? styles.copied : ''}`}
+                        >
+                            {copied ? 'Copied' : 'Copy ID'}
+                        </button>
+                    </div>
+
+                    <div className={styles.badgeRow}>
+                        <span className={styles.badge}>
+                            {sessionMode === 'guest'
+                                ? 'Guest mode'
+                                : 'Signed in'}
+                        </span>
+                        <span className={styles.badge}>
+                            {user.defaultMessageMode === 'temp'
+                                ? 'Temp by default'
+                                : 'Permanent by default'}
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            {/* Name */}
-            <h2
-                className="text-xl font-bold mb-1"
-                style={{ color: 'var(--text-primary)' }}
-            >
-                {user.displayName}
-            </h2>
-
-            {/* Username + copy */}
-            <div className="flex items-center gap-2 mb-6">
-                <span
-                    className="text-sm font-medium"
-                    style={{ color: 'var(--accent-primary)' }}
-                >
-                    @{user.username}
-                </span>
-                <button
-                    onClick={handleCopyId}
-                    className={`${styles.copyBtn} ${copied ? styles.copied : ''} px-2 py-0.5 rounded-md text-xs cursor-pointer`}
-                >
-                    {copied ? '✓ Copied!' : 'Copy ID'}
-                </button>
+            <div className={styles.statGrid}>
+                <article className={styles.statCard}>
+                    <span className={styles.statValue}>
+                        {user.usernameSet ? 'Verified' : 'Pending'}
+                    </span>
+                    <span className={styles.statLabel}>Username state</span>
+                </article>
+                <article className={styles.statCard}>
+                    <span className={styles.statValue}>
+                        {user.isTemp ? 'Temporary' : 'Persistent'}
+                    </span>
+                    <span className={styles.statLabel}>Account mode</span>
+                </article>
+                <article className={styles.statCard}>
+                    <span className={styles.statValue}>
+                        {user.burnAfterRead ? 'Enabled' : 'Off'}
+                    </span>
+                    <span className={styles.statLabel}>Burn after read</span>
+                </article>
             </div>
 
-            {/* Stats row */}
-            <div
-                className="w-full flex items-center justify-around py-4 rounded-xl"
-                style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)'
-                }}
-            >
-                <div className="flex flex-col items-center gap-1">
-                    <span
-                        className="text-lg font-bold"
-                        style={{ color: 'var(--text-primary)' }}
-                    >
-                        {user.usernameSet ? '✓' : '✕'}
-                    </span>
-                    <span
-                        className="text-xs"
-                        style={{ color: 'var(--text-tertiary)' }}
-                    >
-                        Verified
+            <div className={styles.metaGrid}>
+                <div className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Email</span>
+                    <span className={styles.metaValue}>{user.email}</span>
+                </div>
+                <div className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Message mode</span>
+                    <span className={styles.metaValue}>
+                        {user.defaultMessageMode === 'temp'
+                            ? 'Temporary first'
+                            : 'Permanent first'}
                     </span>
                 </div>
-                <div
-                    className="w-px h-8"
-                    style={{ backgroundColor: 'var(--border-color)' }}
-                ></div>
-                <div className="flex flex-col items-center gap-1">
-                    <span
-                        className="text-lg font-bold"
-                        style={{ color: 'var(--text-primary)' }}
-                    >
-                        {user.isTemp ? '⏱' : '♾️'}
-                    </span>
-                    <span
-                        className="text-xs"
-                        style={{ color: 'var(--text-tertiary)' }}
-                    >
-                        Account
-                    </span>
-                </div>
-                <div
-                    className="w-px h-8"
-                    style={{ backgroundColor: 'var(--border-color)' }}
-                ></div>
-                <div className="flex flex-col items-center gap-1">
-                    <span
-                        className="text-lg font-bold"
-                        style={{ color: 'var(--text-primary)' }}
-                    >
-                        {user.burnAfterRead ? '🔥' : '💬'}
-                    </span>
-                    <span
-                        className="text-xs"
-                        style={{ color: 'var(--text-tertiary)' }}
-                    >
-                        Burn
+                <div className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Session</span>
+                    <span className={styles.metaValue}>
+                        {sessionMode === 'guest'
+                            ? 'Guest browsing'
+                            : 'Protected by Google sign-in'}
                     </span>
                 </div>
             </div>

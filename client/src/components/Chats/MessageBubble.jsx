@@ -1,12 +1,15 @@
 import { formatTime, calculateTimeRemaining } from '../../utils/formatters'
 import styles from '../../styles/Chats/MessageBubble.module.css'
 
-export default function MessageBubble({ message, isSent }) {
+export default function MessageBubble({ message, isSent, currentUserId }) {
     const isTempMessage = message.isTemp && message.expiresAt
     const timeRemaining = isTempMessage
         ? calculateTimeRemaining(message.expiresAt)
         : null
-    const isRead = message.readBy?.length > 0
+    const isRead = message.readBy?.some(
+        (reader) =>
+            (reader?._id || reader)?.toString() !== currentUserId?.toString()
+    )
 
     return (
         <div

@@ -15,6 +15,9 @@
 .messages {
     flex: 1;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable both-edges;
+    -webkit-overflow-scrolling: touch;
     padding: 18px 20px 12px;
     display: flex;
     flex-direction: column;

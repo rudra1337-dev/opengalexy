@@ -1,5 +1,6 @@
 import Room from '../models/Room.model.js'
 import User from '../models/User.model.js'
+import Message from '../models/Message.model.js'
 import { getExpiryDate } from '../utils/timeHelper.js'
 
 // @desc    Get or create a direct room between 2 users
@@ -26,7 +27,8 @@ const getOrCreateDirectRoom = async (req, res) => {
         })
 
         if (room) {
-            return res.json({ success: true, room })
+            const hydratedRoom = await buildHydratedRoom(room._id, currentUserId)
+            return res.json({ success: true, room: hydratedRoom })
         }
 
         // create new direct room
@@ -35,7 +37,8 @@ const getOrCreateDirectRoom = async (req, res) => {
             members: [currentUserId, otherUser._id]
         })
 
-        res.status(201).json({ success: true, room })
+        const hydratedRoom = await buildHydratedRoom(room._id, currentUserId)
+        res.status(201).json({ success: true, room: hydratedRoom })
 
     } catch (error) {
         res.status(500).json({ message: error.message })
@@ -46,13 +49,17 @@ const getOrCreateDirectRoom = async (req, res) => {
 // @route   GET /api/rooms
 const getUserRooms = async (req, res) => {
     try {
-        const rooms = await Room.find({ members: req.user._id })
-            .populate('members', 'username displayName avatar isOnline')
+        const rooms = await Room.find({ members: req.user._id, type: 'direct' })
+            .populate('members', 'username displayName avatar isOnline lastSeen')
             .populate('lastMessage.sender', 'username')
             .populate('group', 'name avatar')
             .sort({ updatedAt: -1 })
 
-        res.json({ success: true, rooms })
+        const hydratedRooms = await Promise.all(
+            rooms.map((room) => attachUnreadCount(room, req.user._id))
+        )
+
+        res.json({ success: true, rooms: hydratedRooms })
 
     } catch (error) {
         res.status(500).json({ message: error.message })
@@ -107,3 +114,31 @@ const setRoomTemp = async (req, res) => {
 }
 
 export { getOrCreateDirectRoom, getUserRooms, getRoomById, setRoomTemp }
+
+const buildHydratedRoom = async (roomId, userId) => {
+    const room = await Room.findById(roomId)
+        .populate('members', 'username displayName avatar isOnline lastSeen')
+        .populate('lastMessage.sender', 'username')
+        .populate('group', 'name avatar')
+
+    if (!room) return null
+
+    return attachUnreadCount(room, userId)
+}
+
+const attachUnreadCount = async (room, userId) => {
+    const unreadCount = await countUnreadMessages(room._id, userId)
+
+    return {
+        ...room.toObject(),
+        unreadCount
+    }
+}
+
+const countUnreadMessages = async (roomId, userId) =>
+    await Message.countDocuments({
+        roomId,
+        isBurned: false,
+        sender: { $ne: userId },
+        readBy: { $ne: userId }
+    })

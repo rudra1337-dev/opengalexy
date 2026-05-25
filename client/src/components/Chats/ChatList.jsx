@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { setChatList, setActiveChat } from '../../redux/slices/chatsSlice'
+import {
+    setChatList,
+    setActiveChat,
+    upsertChat
+} from '../../redux/slices/chatsSlice'
 import { setLoading } from '../../redux/slices/uiSlice'
 import { chatService } from '../../services/chatService'
+import { userService } from '../../services/userService'
 import ChatItem from './ChatItem'
 import styles from '../../styles/Chats/ChatList.module.css'
 
@@ -13,6 +18,8 @@ export default function ChatList({ onSelectChat, isGuest = false }) {
     const { loading } = useSelector((state) => state.ui)
     const [searchQuery, setSearchQuery] = useState('')
     const [activeFilter, setActiveFilter] = useState('all')
+    const [searchResults, setSearchResults] = useState([])
+    const [isSearchingUsers, setIsSearchingUsers] = useState(false)
 
     useEffect(() => {
         if (isGuest) {
@@ -35,6 +42,36 @@ export default function ChatList({ onSelectChat, isGuest = false }) {
         loadChats()
     }, [dispatch, isGuest])
 
+    useEffect(() => {
+        if (isGuest) return undefined
+
+        const trimmedQuery = searchQuery.trim()
+
+        if (trimmedQuery.length < 2) {
+            return undefined
+        }
+
+        const timeoutId = setTimeout(async () => {
+            setIsSearchingUsers(true)
+
+            try {
+                const response = await userService.searchUsers(trimmedQuery)
+                setSearchResults(
+                    response.data.users.filter(
+                        (candidate) => candidate._id !== user?._id
+                    )
+                )
+            } catch (error) {
+                console.error('Error searching users:', error)
+                setSearchResults([])
+            } finally {
+                setIsSearchingUsers(false)
+            }
+        }, 220)
+
+        return () => clearTimeout(timeoutId)
+    }, [searchQuery, isGuest, user?._id])
+
     const filteredChats = chatList.filter((chat) => {
         const otherUser = chat.members?.find(
             (member) => member._id !== user?._id
@@ -53,9 +90,38 @@ export default function ChatList({ onSelectChat, isGuest = false }) {
         return true
     })
 
+    const existingChatUsernames = new Set(
+        chatList
+            .map((chat) =>
+                chat.members?.find((member) => member._id !== user?._id)?.username
+            )
+            .filter(Boolean)
+    )
+
+    const discoverableUsers = searchResults.filter(
+        (candidate) => !existingChatUsernames.has(candidate.username)
+    )
+
     const handleSelectChat = (chat) => {
         dispatch(setActiveChat(chat))
         onSelectChat?.(chat)
+    }
+
+    const handleStartChat = async (person) => {
+        try {
+            const response = await chatService.getOrCreateDirectRoom(
+                person.username
+            )
+            const room = response.data.room
+
+            dispatch(upsertChat(room))
+            dispatch(setActiveChat(room))
+            onSelectChat?.(room)
+            setSearchQuery('')
+            setSearchResults([])
+        } catch (error) {
+            console.error('Error starting chat:', error)
+        }
     }
 
     return (
@@ -103,6 +169,49 @@ export default function ChatList({ onSelectChat, isGuest = false }) {
             </div>
 
             <div className={styles.list}>
+                {!isGuest && searchQuery.trim().length >= 2 && (
+                    <div className={styles.discoveryBlock}>
+                        <div className={styles.discoveryHeader}>
+                            <span>People</span>
+                            {isSearchingUsers ? (
+                                <span className={styles.discoveryMeta}>
+                                    Searching...
+                                </span>
+                            ) : (
+                                <span className={styles.discoveryMeta}>
+                                    {discoverableUsers.length} found
+                                </span>
+                            )}
+                        </div>
+
+                        {discoverableUsers.map((person) => (
+                            <button
+                                key={person._id}
+                                type="button"
+                                className={styles.discoveryCard}
+                                onClick={() => handleStartChat(person)}
+                            >
+                                <div className={styles.discoveryAvatar}>
+                                    {person.displayName
+                                        ?.charAt(0)
+                                        ?.toUpperCase() ||
+                                        person.username?.charAt(0)?.toUpperCase() ||
+                                        '?'}
+                                </div>
+                                <div className={styles.discoveryInfo}>
+                                    <strong>
+                                        {person.displayName || `@${person.username}`}
+                                    </strong>
+                                    <span>@{person.username}</span>
+                                </div>
+                                <span className={styles.discoveryAction}>
+                                    Start chat
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 {loading.fetchingChats ? (
                     Array.from({ length: 6 }).map((_, index) => (
                         <div

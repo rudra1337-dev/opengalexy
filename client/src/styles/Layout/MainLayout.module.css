@@ -20,6 +20,7 @@
     gap: 18px;
     overflow: hidden;
     padding: 18px;
+    align-items: stretch;
 }
 
 .rail {
@@ -156,6 +157,14 @@
     box-shadow: var(--shadow-sm);
     display: flex;
     flex-direction: column;
+    position: relative;
+}
+
+.sidebarPanel > *,
+.detailPanel > * {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
 }
 
 .sidebarPanel {

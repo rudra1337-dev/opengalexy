@@ -1,4 +1,5 @@
 import { Server } from 'socket.io'
+import jwt from 'jsonwebtoken'
 import Message from '../models/Message.model.js'
 import Room from '../models/Room.model.js'
 import User from '../models/User.model.js'
@@ -14,6 +15,27 @@ const initSocket = (server) => {
             origin: getConfiguredClientOrigins(),
             methods: ['GET', 'POST'],
             credentials: true
+        }
+    })
+
+    io.use(async (socket, next) => {
+        try {
+            const token = getSocketToken(socket)
+            if (!token) {
+                return next(new Error('Not authorized'))
+            }
+
+            const decoded = jwt.verify(token, process.env.JWT_SECRET)
+            const user = await User.findById(decoded.id).select('_id')
+
+            if (!user) {
+                return next(new Error('User not found'))
+            }
+
+            socket.userId = user._id.toString()
+            next()
+        } catch {
+            next(new Error('Not authorized'))
         }
     })
 
@@ -52,21 +74,37 @@ const initSocket = (server) => {
         }
 
         // ── USER COMES ONLINE ──────────────────────────
-        socket.on('user-online', async (userId) => {
-            socket.userId = userId
-            socket.join(userId)  // ← personal room for direct notifications
+        socket.on('user-online', async () => {
+            const resolvedUserId = socket.userId
+            socket.join(resolvedUserId)  // ← personal room for direct notifications
 
-            await User.findByIdAndUpdate(userId, {
+            const lastSeen = new Date()
+
+            await User.findByIdAndUpdate(resolvedUserId, {
                 isOnline: true,
-                lastSeen: new Date()
+                lastSeen
             })
 
-            socket.broadcast.emit('user-status', { userId, status: 'online' })
-            console.log(`🟢 User online: ${userId}`)
+            socket.broadcast.emit('user-status', {
+                userId: resolvedUserId,
+                status: 'online',
+                lastSeen
+            })
+            console.log(`🟢 User online: ${resolvedUserId}`)
         })
 
         // ── JOIN A CHAT ROOM ───────────────────────────
-        socket.on('join-room', (roomId) => {
+        socket.on('join-room', async (roomId) => {
+            const room = await Room.findOne({
+                _id: roomId,
+                members: socket.userId
+            }).select('_id')
+
+            if (!room) {
+                socket.emit('error', { message: 'Access denied to room' })
+                return
+            }
+
             socket.join(roomId)
             console.log(`👤 ${socket.userId} joined room: ${roomId}`)
         })
@@ -80,7 +118,25 @@ const initSocket = (server) => {
         // ── SEND MESSAGE ───────────────────────────────
         socket.on('send-message', async (data) => {
             try {
-                const { roomId, content, isTemp, duration, isBurnAfterRead, type } = data
+                const {
+                    roomId,
+                    content,
+                    isTemp,
+                    duration,
+                    isBurnAfterRead,
+                    type,
+                    clientTempId
+                } = data
+
+                const room = await Room.findOne({
+                    _id: roomId,
+                    members: socket.userId
+                }).select('members')
+
+                if (!room) {
+                    socket.emit('error', { message: 'Access denied to room' })
+                    return
+                }
 
                 // save to DB
                 const message = await Message.create({
@@ -103,9 +159,19 @@ const initSocket = (server) => {
                 })
 
                 await message.populate('sender', 'username displayName avatar')
+                const messagePayload = {
+                    ...message.toObject(),
+                    clientTempId: clientTempId || null
+                }
 
                 // emit to everyone in the room
-                io.to(roomId).emit('message-received', message)
+                io.to(roomId).emit('message-received', messagePayload)
+
+                await Promise.all(
+                    room.members.map((memberId) =>
+                        emitChatUpdated(memberId.toString(), roomId)
+                    )
+                )
 
             } catch (error) {
                 socket.emit('error', { message: error.message })
@@ -113,11 +179,23 @@ const initSocket = (server) => {
         })
 
         // ── TYPING INDICATOR ───────────────────────────
-        socket.on('typing', ({ roomId, username }) => {
+        socket.on('typing', async ({ roomId, username }) => {
+            const room = await Room.findOne({
+                _id: roomId,
+                members: socket.userId
+            }).select('_id')
+
+            if (!room) return
             socket.to(roomId).emit('user-typing', { username })
         })
 
-        socket.on('stop-typing', ({ roomId }) => {
+        socket.on('stop-typing', async ({ roomId }) => {
+            const room = await Room.findOne({
+                _id: roomId,
+                members: socket.userId
+            }).select('_id')
+
+            if (!room) return
             socket.to(roomId).emit('user-stop-typing')
         })
 
@@ -127,7 +205,22 @@ const initSocket = (server) => {
                 const message = await Message.findById(messageId)
                 if (!message) return
 
-                if (!message.readBy.includes(socket.userId)) {
+                const resolvedRoomId = message.roomId?.toString() || roomId
+                const room = await Room.findOne({
+                    _id: resolvedRoomId,
+                    members: socket.userId
+                }).select('members')
+
+                if (!room) {
+                    socket.emit('error', { message: 'Access denied to room' })
+                    return
+                }
+
+                if (
+                    !message.readBy.some(
+                        (readerId) => readerId.toString() === socket.userId
+                    )
+                ) {
                     message.readBy.push(socket.userId)
                 }
 
@@ -135,12 +228,22 @@ const initSocket = (server) => {
                 if (message.isBurnAfterRead) {
                     message.isBurned = true
                     await message.save()
+                    await refreshRoomLastMessage(resolvedRoomId)
                     // tell everyone in room to delete this message from UI
-                    io.to(roomId).emit('message-burned', { messageId })
+                    io.to(resolvedRoomId).emit('message-burned', { messageId })
                 } else {
                     await message.save()
-                    io.to(roomId).emit('message-seen', { messageId, userId: socket.userId })
+                    io.to(resolvedRoomId).emit('message-seen', {
+                        messageId,
+                        userId: socket.userId
+                    })
                 }
+
+                await Promise.all(
+                    room.members.map((memberId) =>
+                        emitChatUpdated(memberId.toString(), resolvedRoomId)
+                    )
+                )
 
             } catch (error) {
                 socket.emit('error', { message: error.message })
@@ -280,13 +383,15 @@ const initSocket = (server) => {
             removeNearbyPresence()
 
             if (socket.userId) {
+                const lastSeen = new Date()
                 await User.findByIdAndUpdate(socket.userId, {
                     isOnline: false,
-                    lastSeen: new Date()
+                    lastSeen
                 })
                 socket.broadcast.emit('user-status', {
                     userId: socket.userId,
-                    status: 'offline'
+                    status: 'offline',
+                    lastSeen
                 })
                 console.log(`🔴 User offline: ${socket.userId}`)
             }
@@ -313,3 +418,77 @@ const getExpiryFromDuration = (duration) => {
 const getIO = () => io
 
 export { initSocket, getIO }
+
+const getSocketToken = (socket) => {
+    const authToken = socket.handshake.auth?.token
+    if (authToken) return authToken
+
+    const authHeader = socket.handshake.headers.authorization
+    if (authHeader?.startsWith('Bearer ')) {
+        return authHeader.slice(7)
+    }
+
+    const cookieHeader = socket.handshake.headers.cookie || ''
+    const tokenCookie = cookieHeader
+        .split(';')
+        .map((entry) => entry.trim())
+        .find((entry) => entry.startsWith('token='))
+
+    if (!tokenCookie) return null
+
+    return decodeURIComponent(tokenCookie.slice('token='.length))
+}
+
+const emitChatUpdated = async (userId, roomId) => {
+    const roomPayload = await buildRoomPayloadForUser(roomId, userId)
+    if (!roomPayload) return
+
+    io.to(userId).emit('chat-updated', roomPayload)
+}
+
+const buildRoomPayloadForUser = async (roomId, userId) => {
+    const room = await Room.findById(roomId)
+        .populate('members', 'username displayName avatar isOnline lastSeen')
+        .populate('lastMessage.sender', 'username')
+        .populate('group', 'name avatar')
+
+    if (!room) return null
+
+    const unreadCount = await Message.countDocuments({
+        roomId,
+        isBurned: false,
+        sender: { $ne: userId },
+        readBy: { $ne: userId }
+    })
+
+    return {
+        ...room.toObject(),
+        unreadCount
+    }
+}
+
+const refreshRoomLastMessage = async (roomId) => {
+    const previousVisibleMessage = await Message.findOne({
+        roomId,
+        isBurned: false
+    }).sort({ createdAt: -1 })
+
+    if (!previousVisibleMessage) {
+        await Room.findByIdAndUpdate(roomId, {
+            lastMessage: {
+                content: '',
+                sender: null,
+                sentAt: null
+            }
+        })
+        return
+    }
+
+    await Room.findByIdAndUpdate(roomId, {
+        lastMessage: {
+            content: previousVisibleMessage.content,
+            sender: previousVisibleMessage.sender,
+            sentAt: previousVisibleMessage.createdAt
+        }
+    })
+}

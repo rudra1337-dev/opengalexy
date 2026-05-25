@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import {
     addMessage,
+    replaceOptimisticMessage,
     removeMessage,
     setActiveMessages,
     setLoadingMessages,
@@ -70,7 +71,20 @@ export default function ChatScreen({ onCall, onBack, isGuest = false }) {
         if (!socket || !activeChat) return
 
         socket.on('message-received', (message) => {
-            if (message.roomId === activeChat._id) {
+            if (message.roomId?.toString() === activeChat._id?.toString()) {
+                if (
+                    message.sender?._id === user?._id &&
+                    message.clientTempId
+                ) {
+                    dispatch(
+                        replaceOptimisticMessage({
+                            clientTempId: message.clientTempId,
+                            message
+                        })
+                    )
+                    return
+                }
+
                 dispatch(addMessage(message))
             }
         })
@@ -98,7 +112,7 @@ export default function ChatScreen({ onCall, onBack, isGuest = false }) {
             socket.off('user-typing')
             socket.off('user-stop-typing')
         }
-    }, [socket, activeChat, dispatch, isGuest])
+    }, [socket, activeChat, dispatch, isGuest, user?._id])
 
     useEffect(() => {
         if (isGuest) return
@@ -123,16 +137,19 @@ export default function ChatScreen({ onCall, onBack, isGuest = false }) {
         if (!activeChat) return
 
         try {
+            const clientTempId = 'temp-' + Date.now()
             const tempMessage = {
-                _id: 'temp-' + Date.now(),
+                _id: clientTempId,
                 roomId: activeChat._id,
                 sender: user,
                 content: data.content,
                 isTemp: data.isTemp,
-                expiresAt: data.expiresAt,
+                expiresAt: data.isTemp ? getClientExpiry(data.duration) : null,
+                isBurnAfterRead: user?.burnAfterRead || false,
                 type: data.type,
                 readBy: [user._id],
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                clientTempId
             }
 
             dispatch(addMessage(tempMessage))
@@ -143,7 +160,9 @@ export default function ChatScreen({ onCall, onBack, isGuest = false }) {
                 content: data.content,
                 isTemp: data.isTemp,
                 duration: data.duration,
-                type: data.type
+                type: data.type,
+                isBurnAfterRead: user?.burnAfterRead || false,
+                clientTempId
             })
         } catch (error) {
             console.error('Error sending message:', error)
@@ -201,6 +220,7 @@ export default function ChatScreen({ onCall, onBack, isGuest = false }) {
                 key={message._id}
                 message={message}
                 isSent={message.sender._id === user._id}
+                currentUserId={user._id}
             />
         )
     })
@@ -262,4 +282,16 @@ export default function ChatScreen({ onCall, onBack, isGuest = false }) {
             )}
         </div>
     )
+}
+
+const getClientExpiry = (duration) => {
+    const durationMap = {
+        '5m': 5 * 60 * 1000,
+        '1h': 60 * 60 * 1000,
+        '24h': 24 * 60 * 60 * 1000,
+        '7d': 7 * 24 * 60 * 60 * 1000
+    }
+
+    if (!durationMap[duration]) return null
+    return new Date(Date.now() + durationMap[duration]).toISOString()
 }

@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
+import { useSelector } from 'react-redux'
 import { validateMessage } from '../../utils/validators'
 import styles from '../../styles/Chats/InputBar.module.css'
 
 export default function InputBar({ onSendMessage, onTyping, isLoading }) {
+    const { user } = useSelector((state) => state.auth)
     const [content, setContent] = useState('')
-    const [isTemp, setIsTemp] = useState(false)
+    const [isTemp, setIsTemp] = useState(
+        user?.defaultMessageMode === 'temp'
+    )
     const [tempDuration, setTempDuration] = useState('1h')
     const textareaRef = useRef(null)
     const typingTimeoutRef = useRef(null)
@@ -52,7 +56,7 @@ export default function InputBar({ onSendMessage, onTyping, isLoading }) {
         })
 
         setContent('')
-        setIsTemp(false)
+        setIsTemp(user?.defaultMessageMode === 'temp')
         onTyping(false)
 
         if (typingTimeoutRef.current) {

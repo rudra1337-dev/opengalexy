@@ -79,8 +79,20 @@ const markAsRead = async (req, res) => {
         const message = await Message.findById(req.params.id)
         if (!message) return res.status(404).json({ message: 'Message not found' })
 
+        const room = await Room.findById(message.roomId)
+        if (!room) return res.status(404).json({ message: 'Room not found' })
+
+        const isMember = room.members.some(
+            (member) => member.toString() === req.user._id.toString()
+        )
+        if (!isMember) return res.status(403).json({ message: 'Access denied' })
+
         // add to readBy if not already there
-        if (!message.readBy.includes(req.user._id)) {
+        if (
+            !message.readBy.some(
+                (readerId) => readerId.toString() === req.user._id.toString()
+            )
+        ) {
             message.readBy.push(req.user._id)
         }
 

@@ -8,6 +8,10 @@ import {
 } from 'react-router-dom'
 import { clearAuth, setUser, setLoading } from './redux/slices/authSlice'
 import { setSocket, setConnected } from './redux/slices/socketSlice'
+import {
+    upsertChat,
+    updateUserPresence
+} from './redux/slices/chatsSlice'
 import { authService } from './services/authService'
 import {
     initSocket,
@@ -143,6 +147,7 @@ function App() {
     const { user, isAuthenticated, sessionMode } = useSelector(
         (state) => state.auth
     )
+    const { socket } = useSelector((state) => state.socket)
 
     // Check if user is already logged in on app load
     useEffect(() => {
@@ -218,6 +223,29 @@ function App() {
             }
         }
     }, [isAuthenticated, user, dispatch, sessionMode])
+
+    useEffect(() => {
+        if (!socket || sessionMode !== 'authenticated' || !isAuthenticated) {
+            return undefined
+        }
+
+        const handleChatUpdated = (chat) => {
+            if (chat.type !== 'direct') return
+            dispatch(upsertChat(chat))
+        }
+
+        const handleUserStatus = (payload) => {
+            dispatch(updateUserPresence(payload))
+        }
+
+        socket.on('chat-updated', handleChatUpdated)
+        socket.on('user-status', handleUserStatus)
+
+        return () => {
+            socket.off('chat-updated', handleChatUpdated)
+            socket.off('user-status', handleUserStatus)
+        }
+    }, [socket, dispatch, isAuthenticated, sessionMode])
 
     return (
         <Router>
