@@ -269,8 +269,6 @@ For now you can:
 
 Building OpenGalexy as a real-world startup project to solve genuine communication problems while learning full-stack development.
 
-Follow the build journey → [YouTube: @ExploreTechOfficiall](https://youtube.com/@ExploreTechOfficiall)
-
 ---
 
 ## 📄 License
