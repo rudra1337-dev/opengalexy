@@ -147,6 +147,11 @@ export const useNearby = () => {
             })
 
             await pc.setRemoteDescription(new RTCSessionDescription(offer))
+            await flushPendingIceCandidates({
+                requestId,
+                pc,
+                pendingIceCandidatesRef
+            })
             const answer = await pc.createAnswer()
             await pc.setLocalDescription(answer)
 
@@ -162,21 +167,35 @@ export const useNearby = () => {
             if (!pc) return
 
             await pc.setRemoteDescription(new RTCSessionDescription(answer))
+            await flushPendingIceCandidates({
+                requestId,
+                pc,
+                pendingIceCandidatesRef
+            })
         }
 
         const handleIceCandidate = async ({ requestId, candidate }) => {
             const pc = peerConnectionsRef.current[requestId]
             const iceCandidate = new RTCIceCandidate(candidate)
 
-            if (!pc) {
-                pendingIceCandidatesRef.current[requestId] = [
-                    ...(pendingIceCandidatesRef.current[requestId] || []),
-                    iceCandidate
-                ]
+            if (!pc || !pc.remoteDescription) {
+                queueIceCandidate({
+                    requestId,
+                    iceCandidate,
+                    pendingIceCandidatesRef
+                })
                 return
             }
 
-            await pc.addIceCandidate(iceCandidate)
+            try {
+                await pc.addIceCandidate(iceCandidate)
+            } catch {
+                queueIceCandidate({
+                    requestId,
+                    iceCandidate,
+                    pendingIceCandidatesRef
+                })
+            }
         }
 
         const handleTransferCancelled = ({ requestId, reason }) => {
@@ -482,7 +501,6 @@ const createPeerConnection = ({
     isSender,
     socket,
     peerConnectionsRef,
-    pendingIceCandidatesRef,
     nearbyDevicesRef,
     transfersRef,
     setTransfers
@@ -545,14 +563,6 @@ const createPeerConnection = ({
             }
         }
     }
-
-    const pendingCandidates =
-        pendingIceCandidatesRef.current[requestId] || []
-
-    pendingCandidates.forEach(async (candidate) => {
-        await pc.addIceCandidate(candidate)
-    })
-    delete pendingIceCandidatesRef.current[requestId]
 
     return pc
 }
@@ -625,6 +635,41 @@ const setupReceiveChannel = ({
 const getPeerUsername = (nearbyDevicesRef, peerUserId) =>
     nearbyDevicesRef.current.find((device) => device.userId === peerUserId)
         ?.username
+
+const queueIceCandidate = ({
+    requestId,
+    iceCandidate,
+    pendingIceCandidatesRef
+}) => {
+    pendingIceCandidatesRef.current[requestId] = [
+        ...(pendingIceCandidatesRef.current[requestId] || []),
+        iceCandidate
+    ]
+}
+
+const flushPendingIceCandidates = async ({
+    requestId,
+    pc,
+    pendingIceCandidatesRef
+}) => {
+    const pendingCandidates = pendingIceCandidatesRef.current[requestId] || []
+    if (pendingCandidates.length === 0) return
+
+    delete pendingIceCandidatesRef.current[requestId]
+
+    for (const candidate of pendingCandidates) {
+        try {
+            await pc.addIceCandidate(candidate)
+        } catch {
+            queueIceCandidate({
+                requestId,
+                iceCandidate: candidate,
+                pendingIceCandidatesRef
+            })
+            break
+        }
+    }
+}
 
 const cleanupRequest = (requestId, peerConnectionsRef, pendingOutgoingRef) => {
     peerConnectionsRef.current[requestId]?.close()
