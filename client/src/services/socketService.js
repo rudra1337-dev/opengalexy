@@ -4,6 +4,13 @@ import { SOCKET_URL } from '../utils/constants'
 let socket = null
 
 export const initSocket = (userId) => {
+    if (socket) {
+        socket.removeAllListeners()
+        socket.io.opts.reconnection = false
+        socket.disconnect()
+        socket = null
+    }
+
     socket = io(SOCKET_URL, {
         withCredentials: true,
         reconnection: true,
@@ -28,6 +35,8 @@ export const getSocket = () => socket
 
 export const disconnectSocket = () => {
     if (socket) {
+        socket.removeAllListeners()
+        socket.io.opts.reconnection = false
         socket.disconnect()
         socket = null
     }

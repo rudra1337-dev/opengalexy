@@ -213,7 +213,8 @@ function App() {
             })
 
             return () => {
-                socket.disconnect()
+                disconnectSocket()
+                dispatch(setConnected(false))
             }
         }
     }, [isAuthenticated, user, dispatch, sessionMode])

@@ -11,11 +11,16 @@ const googleCallback = (req, res) => {
 
         const isNewUser = !req.user.usernameSet
 
-        // send token as cookie
-        res.cookie('token', token, {
+        const cookieOptions = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            path: '/'
+        }
+
+        // send token as cookie
+        res.cookie('token', token, {
+            ...cookieOptions,
             maxAge: 7 * 24 * 60 * 60 * 1000  // 7 days
         })
 
@@ -100,7 +105,12 @@ const getMe = async (req, res) => {
 // @desc    Logout
 // @route   POST /api/auth/logout
 const logout = (req, res) => {
-    res.clearCookie('token')
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        path: '/'
+    })
     res.json({ success: true, message: 'Logged out successfully' })
 }
 
