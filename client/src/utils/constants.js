@@ -1,5 +1,9 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
+export const WEBRTC_ICE_SERVERS = parseIceServers(
+    import.meta.env.VITE_WEBRTC_ICE_SERVERS
+)
+export const WEBRTC_DEBUG = import.meta.env.VITE_WEBRTC_DEBUG === 'true'
 
 // Duration options for temp messages
 export const TEMP_DURATIONS = {
@@ -34,4 +38,31 @@ export const ROUTES = {
 export const CALL_TYPES = {
     AUDIO: 'audio',
     VIDEO: 'video'
+}
+
+function parseIceServers(rawValue) {
+    if (!rawValue) {
+        return [{ urls: 'stun:stun.l.google.com:19302' }]
+    }
+
+    try {
+        const parsedValue = JSON.parse(rawValue)
+
+        if (
+            Array.isArray(parsedValue) &&
+            parsedValue.every(
+                (entry) =>
+                    entry &&
+                    (typeof entry.urls === 'string' ||
+                        (Array.isArray(entry.urls) &&
+                            entry.urls.every((url) => typeof url === 'string')))
+            )
+        ) {
+            return parsedValue
+        }
+    } catch (error) {
+        console.warn('Invalid VITE_WEBRTC_ICE_SERVERS value. Falling back to STUN.', error)
+    }
+
+    return [{ urls: 'stun:stun.l.google.com:19302' }]
 }

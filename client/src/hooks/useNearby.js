@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { getSocket } from '../services/socketService'
+import { WEBRTC_DEBUG, WEBRTC_ICE_SERVERS } from '../utils/constants'
 
 const FILE_CHUNK_SIZE = 16 * 1024
 const BUFFER_THRESHOLD = 64 * 1024
@@ -37,6 +38,7 @@ export const useNearby = () => {
 
         const announcePresence = () => {
             setIsScanning(true)
+            logNearbyDebug('announce-presence', { userId: user._id })
             socket.emit('nearby-announce', {
                 userId: user._id,
                 username: user.username
@@ -77,6 +79,12 @@ export const useNearby = () => {
         }
 
         const handleTransferRequest = ({ requestId, from, fromUsername, file }) => {
+            logNearbyDebug('incoming-transfer-request', {
+                requestId,
+                from,
+                fileName: file?.name,
+                fileSize: file?.size
+            })
             setIncomingRequests((prev) => {
                 if (prev.some((request) => request.requestId === requestId)) {
                     return prev
@@ -102,6 +110,12 @@ export const useNearby = () => {
             from,
             reason
         }) => {
+            logNearbyDebug('transfer-response', {
+                requestId,
+                accepted,
+                from,
+                reason
+            })
             const pendingRequest = pendingOutgoingRef.current[requestId]
             if (!pendingRequest) return
 
@@ -131,6 +145,11 @@ export const useNearby = () => {
         }
 
         const handleOffer = async ({ from, requestId, offer }) => {
+            logNearbyDebug('incoming-offer', {
+                requestId,
+                from,
+                type: offer?.type
+            })
             const acceptedRequest = acceptedIncomingRef.current[requestId]
             if (!acceptedRequest) return
 
@@ -163,6 +182,10 @@ export const useNearby = () => {
         }
 
         const handleAnswer = async ({ requestId, answer }) => {
+            logNearbyDebug('incoming-answer', {
+                requestId,
+                type: answer?.type
+            })
             const pc = peerConnectionsRef.current[requestId]
             if (!pc) return
 
@@ -177,6 +200,11 @@ export const useNearby = () => {
         const handleIceCandidate = async ({ requestId, candidate }) => {
             const pc = peerConnectionsRef.current[requestId]
             const iceCandidate = new RTCIceCandidate(candidate)
+
+            logNearbyDebug('incoming-ice-candidate', {
+                requestId,
+                candidateType: candidate?.type || extractCandidateType(candidate?.candidate)
+            })
 
             if (!pc || !pc.remoteDescription) {
                 queueIceCandidate({
@@ -292,6 +320,12 @@ export const useNearby = () => {
         if (!device || !selectedFile || !socket) return false
 
         const requestId = createId()
+        logNearbyDebug('outgoing-transfer-request', {
+            requestId,
+            to: device.userId,
+            fileName: selectedFile.name,
+            fileSize: selectedFile.size
+        })
         pendingOutgoingRef.current[requestId] = {
             file: selectedFile,
             device
@@ -333,6 +367,11 @@ export const useNearby = () => {
         const request = incomingRequests.find((item) => item.requestId === requestId)
         if (!request || !socket) return
 
+        logNearbyDebug('accept-transfer-request', {
+            requestId,
+            from: request.from
+        })
+
         acceptedIncomingRef.current[requestId] = request
 
         setIncomingRequests((prev) =>
@@ -362,6 +401,11 @@ export const useNearby = () => {
     const declineIncomingRequest = (requestId) => {
         const request = incomingRequests.find((item) => item.requestId === requestId)
         if (!request || !socket) return
+
+        logNearbyDebug('decline-transfer-request', {
+            requestId,
+            from: request.from
+        })
 
         setIncomingRequests((prev) =>
             prev.filter((item) => item.requestId !== requestId)
@@ -424,6 +468,10 @@ const startOutgoingTransfer = async ({
 
     channel.onopen = async () => {
         try {
+            logNearbyDebug('data-channel-open', {
+                requestId,
+                peerUserId
+            })
             updateTransfer(setTransfers, requestId, {
                 status: 'sending'
             })
@@ -480,13 +528,30 @@ const startOutgoingTransfer = async ({
     }
 
     channel.onerror = () => {
+        logNearbyDebug('data-channel-error', {
+            requestId,
+            peerUserId
+        })
         updateTransfer(setTransfers, requestId, {
             status: 'failed'
         })
     }
 
+    channel.onclose = () => {
+        logNearbyDebug('data-channel-close', {
+            requestId,
+            peerUserId
+        })
+    }
+
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
+
+    logNearbyDebug('outgoing-offer', {
+        requestId,
+        peerUserId,
+        type: offer.type
+    })
 
     socket.emit('nearby-offer', {
         to: peerUserId,
@@ -509,13 +574,29 @@ const createPeerConnection = ({
     if (existingConnection) return existingConnection
 
     const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        iceServers: WEBRTC_ICE_SERVERS
+    })
+
+    logNearbyDebug('create-peer-connection', {
+        requestId,
+        peerUserId,
+        isSender,
+        iceServers: WEBRTC_ICE_SERVERS.map((server) => ({
+            urls: server.urls,
+            username: server.username ? '[set]' : undefined,
+            credential: server.credential ? '[set]' : undefined
+        }))
     })
 
     peerConnectionsRef.current[requestId] = pc
 
     pc.onicecandidate = ({ candidate }) => {
         if (candidate) {
+            logNearbyDebug('outgoing-ice-candidate', {
+                requestId,
+                peerUserId,
+                candidateType: candidate.type || extractCandidateType(candidate.candidate)
+            })
             socket.emit('nearby-ice-candidate', {
                 to: peerUserId,
                 requestId,
@@ -526,6 +607,11 @@ const createPeerConnection = ({
 
     if (!isSender) {
         pc.ondatachannel = ({ channel }) => {
+            logNearbyDebug('incoming-data-channel', {
+                requestId,
+                peerUserId,
+                label: channel.label
+            })
             setupReceiveChannel({
                 channel,
                 requestId,
@@ -538,6 +624,11 @@ const createPeerConnection = ({
     }
 
     pc.onconnectionstatechange = () => {
+        logNearbyDebug('connection-state-change', {
+            requestId,
+            peerUserId,
+            state: pc.connectionState
+        })
         if (pc.connectionState === 'connected') {
             updateTransfer(setTransfers, requestId, {
                 status: isSender ? 'sending' : 'receiving'
@@ -564,6 +655,30 @@ const createPeerConnection = ({
         }
     }
 
+    pc.oniceconnectionstatechange = () => {
+        logNearbyDebug('ice-connection-state-change', {
+            requestId,
+            peerUserId,
+            state: pc.iceConnectionState
+        })
+    }
+
+    pc.onicegatheringstatechange = () => {
+        logNearbyDebug('ice-gathering-state-change', {
+            requestId,
+            peerUserId,
+            state: pc.iceGatheringState
+        })
+    }
+
+    pc.onsignalingstatechange = () => {
+        logNearbyDebug('signaling-state-change', {
+            requestId,
+            peerUserId,
+            state: pc.signalingState
+        })
+    }
+
     return pc
 }
 
@@ -584,6 +699,13 @@ const setupReceiveChannel = ({
             const meta = JSON.parse(data)
             fileName = meta.name
             fileSize = meta.size
+
+            logNearbyDebug('incoming-file-metadata', {
+                requestId,
+                peerUserId,
+                fileName: meta.name,
+                fileSize: meta.size
+            })
 
             const peerUsername = getPeerUsername(nearbyDevicesRef, peerUserId)
 
@@ -615,6 +737,13 @@ const setupReceiveChannel = ({
             downloadLink.click()
             URL.revokeObjectURL(url)
 
+            logNearbyDebug('incoming-file-complete', {
+                requestId,
+                peerUserId,
+                fileName,
+                fileSize
+            })
+
             updateTransfer(setTransfers, requestId, {
                 status: 'done',
                 progress: 100
@@ -626,8 +755,19 @@ const setupReceiveChannel = ({
     }
 
     channel.onerror = () => {
+        logNearbyDebug('receive-channel-error', {
+            requestId,
+            peerUserId
+        })
         updateTransfer(setTransfers, requestId, {
             status: 'failed'
+        })
+    }
+
+    channel.onclose = () => {
+        logNearbyDebug('receive-channel-close', {
+            requestId,
+            peerUserId
         })
     }
 }
@@ -683,4 +823,19 @@ const updateTransfer = (setTransfers, requestId, patch) => {
             transfer.id === requestId ? { ...transfer, ...patch } : transfer
         )
     )
+}
+
+const logNearbyDebug = (event, payload = {}) => {
+    if (!WEBRTC_DEBUG) return
+
+    console.log(`[NearbyShare] ${event}`, payload)
+}
+
+const extractCandidateType = (candidateString) => {
+    if (!candidateString || typeof candidateString !== 'string') return undefined
+
+    const parts = candidateString.split(' typ ')
+    if (parts.length < 2) return undefined
+
+    return parts[1].split(' ')[0]
 }
