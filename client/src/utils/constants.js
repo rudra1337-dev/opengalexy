@@ -42,6 +42,9 @@ export const CALL_TYPES = {
 
 function parseIceServers(rawValue) {
     if (!rawValue) {
+        // TODO: This fallback is STUN-only, so Nearby Share depends on direct
+        // host/srflx connectivity. Add real TURN relay credentials for
+        // production when cross-network reliability becomes a priority.
         return [{ urls: 'stun:stun.l.google.com:19302' }]
     }
 
@@ -64,5 +67,8 @@ function parseIceServers(rawValue) {
         console.warn('Invalid VITE_WEBRTC_ICE_SERVERS value. Falling back to STUN.', error)
     }
 
+    // TODO: Same limitation as above: falling back to STUN keeps behavior
+    // simple for now, but hotspot-provider peers and restrictive NATs may need
+    // TURN relay candidates to connect reliably.
     return [{ urls: 'stun:stun.l.google.com:19302' }]
 }

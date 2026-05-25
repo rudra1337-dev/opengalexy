@@ -451,6 +451,10 @@ const startOutgoingTransfer = async ({
     setTransfers,
     peerUsername
 }) => {
+    // TODO: This currently assumes the WebRTC data channel stays alive for the
+    // full upload. For production-grade large file transfers, add chunk/session
+    // metadata plus reconnect/resume handling so interrupted transfers can
+    // continue instead of failing the whole file.
     const pc = createPeerConnection({
         requestId,
         peerUserId,
@@ -573,6 +577,11 @@ const createPeerConnection = ({
     const existingConnection = peerConnectionsRef.current[requestId]
     if (existingConnection) return existingConnection
 
+    // TODO: Nearby Share currently relies on direct connectivity from STUN-
+    // discovered host/srflx candidates only. This works on some networks, but
+    // it often fails when one of the peers is the hotspot-providing phone or
+    // when NAT/AP isolation blocks peer-to-peer traffic. Add proper TURN relay
+    // support for production so browsers can fall back to relay candidates.
     const pc = new RTCPeerConnection({
         iceServers: WEBRTC_ICE_SERVERS
     })
@@ -592,6 +601,10 @@ const createPeerConnection = ({
 
     pc.onicecandidate = ({ candidate }) => {
         if (candidate) {
+            // TODO: When TURN is configured correctly, relay candidates should
+            // appear here in addition to host/srflx candidates. Today, missing
+            // relay candidates means we have no reliable fallback path for
+            // restrictive mobile hotspot topologies.
             logNearbyDebug('outgoing-ice-candidate', {
                 requestId,
                 peerUserId,
@@ -690,6 +703,9 @@ const setupReceiveChannel = ({
     socket,
     setTransfers
 }) => {
+    // TODO: Receiving currently buffers the whole file in memory and triggers a
+    // browser download once complete. Future hardening should stream chunks more
+    // defensively and support resume/recovery if the peer connection drops.
     let receivedChunks = []
     let fileName = ''
     let fileSize = 0
