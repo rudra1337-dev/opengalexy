@@ -2,7 +2,9 @@ import { createSlice } from '@reduxjs/toolkit'
 
 const initialState = {
     incomingCall: null,
+    acceptedCall: null,
     activeCall: null,
+    status: 'idle',
     localStream: null,
     remoteStream: null,
     isMuted: false,
@@ -15,9 +17,23 @@ const callSlice = createSlice({
     reducers: {
         setIncomingCall: (state, action) => {
             state.incomingCall = action.payload
+            state.status = action.payload ? 'ringing' : 'idle'
+        },
+        acceptIncomingCall: (state) => {
+            state.acceptedCall = state.incomingCall
+            state.incomingCall = null
+            state.status = state.acceptedCall ? 'accepting' : 'idle'
         },
         setActiveCall: (state, action) => {
             state.activeCall = action.payload
+            if (action.payload) {
+                state.incomingCall = null
+                state.acceptedCall = null
+                state.status = 'connected'
+            }
+        },
+        setCallStatus: (state, action) => {
+            state.status = action.payload || 'idle'
         },
         setLocalStream: (state, action) => {
             state.localStream = action.payload
@@ -34,6 +50,8 @@ const callSlice = createSlice({
         endCall: (state) => {
             state.activeCall = null
             state.incomingCall = null
+            state.acceptedCall = null
+            state.status = 'idle'
             state.localStream = null
             state.remoteStream = null
             state.isMuted = false
@@ -44,7 +62,9 @@ const callSlice = createSlice({
 
 export const {
     setIncomingCall,
+    acceptIncomingCall,
     setActiveCall,
+    setCallStatus,
     setLocalStream,
     setRemoteStream,
     toggleMute,

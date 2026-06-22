@@ -4,7 +4,8 @@ import {
     BrowserRouter as Router,
     Routes,
     Route,
-    Navigate
+    Navigate,
+    useNavigate
 } from 'react-router-dom'
 import { clearAuth, setUser, setLoading } from './redux/slices/authSlice'
 import { setSocket, setConnected } from './redux/slices/socketSlice'
@@ -12,11 +13,17 @@ import {
     upsertChat,
     updateUserPresence
 } from './redux/slices/chatsSlice'
+import {
+    acceptIncomingCall,
+    endCall,
+    setIncomingCall
+} from './redux/slices/callSlice'
 import { authService } from './services/authService'
 import {
     initSocket,
     disconnectSocket
 } from './services/socketService'
+import CallIncoming from './components/Calls/CallIncoming'
 
 // Pages
 import Landing from './pages/Landing'
@@ -142,6 +149,100 @@ function GuestRoute({ children }) {
     return children
 }
 
+function CallEventBridge() {
+    const navigate = useNavigate()
+    const dispatch = useDispatch()
+    const { socket } = useSelector((state) => state.socket)
+    const { incomingCall, acceptedCall, activeCall } = useSelector(
+        (state) => state.call
+    )
+    const { chatList } = useSelector((state) => state.chats)
+    const { isAuthenticated, sessionMode } = useSelector((state) => state.auth)
+
+    useEffect(() => {
+        if (!socket || sessionMode !== 'authenticated' || !isAuthenticated) {
+            return undefined
+        }
+
+        const handleIncomingCall = (payload) => {
+            const room = chatList.find((chat) => chat._id === payload.roomId)
+            const caller = room?.members?.find(
+                (member) => member._id === payload.from
+            )
+
+            if (activeCall || acceptedCall || incomingCall) {
+                socket.emit('call-reject', {
+                    to: payload.from,
+                    roomId: payload.roomId,
+                    callId: payload.callId,
+                    reason: 'busy'
+                })
+                return
+            }
+
+            dispatch(
+                setIncomingCall({
+                    ...payload,
+                    caller
+                })
+            )
+        }
+
+        const handleIncomingTerminated = (payload) => {
+            if (!incomingCall || payload.callId !== incomingCall.callId) return
+            dispatch(endCall())
+        }
+
+        socket.on('call-incoming', handleIncomingCall)
+        socket.on('call-ended', handleIncomingTerminated)
+        socket.on('call-rejected', handleIncomingTerminated)
+
+        return () => {
+            socket.off('call-incoming', handleIncomingCall)
+            socket.off('call-ended', handleIncomingTerminated)
+            socket.off('call-rejected', handleIncomingTerminated)
+        }
+    }, [
+        socket,
+        dispatch,
+        chatList,
+        activeCall,
+        acceptedCall,
+        incomingCall,
+        isAuthenticated,
+        sessionMode
+    ])
+
+    const handleAccept = () => {
+        if (!incomingCall) return
+        const acceptedIncomingCall = incomingCall
+        dispatch(acceptIncomingCall())
+        navigate(`/call/${incomingCall.roomId}?type=${incomingCall.callType}`, {
+            state: { mode: 'incoming', incomingCall: acceptedIncomingCall }
+        })
+    }
+
+    const handleReject = () => {
+        if (!incomingCall || !socket) return
+
+        socket.emit('call-reject', {
+            to: incomingCall.from,
+            roomId: incomingCall.roomId,
+            callId: incomingCall.callId,
+            reason: 'rejected'
+        })
+        dispatch(endCall())
+    }
+
+    return (
+        <CallIncoming
+            call={incomingCall}
+            onAccept={handleAccept}
+            onReject={handleReject}
+        />
+    )
+}
+
 function App() {
     const dispatch = useDispatch()
     const { user, isAuthenticated, sessionMode } = useSelector(
@@ -249,6 +350,7 @@ function App() {
 
     return (
         <Router>
+            <CallEventBridge />
             <Routes>
                 <Route
                     path="/"

@@ -8,6 +8,8 @@ import { getConfiguredClientOrigins } from '../utils/clientOrigin.js'
 let io
 const nearbyPresence = new Map()
 const activeNearbyTransfers = new Map()
+const activeCalls = new Map()
+const CALL_RING_TIMEOUT_MS = 45 * 1000
 
 const initSocket = (server) => {
     io = new Server(server, {
@@ -251,24 +253,143 @@ const initSocket = (server) => {
         })
 
         // ── CALL SIGNALING ─────────────────────────────
-        socket.on('call-offer', ({ to, offer, callType }) => {
-            io.to(to).emit('call-incoming', {
+        socket.on('call-offer', async ({ to, roomId, offer, callType, callId }) => {
+            try {
+                if (!to || !roomId || !offer || !callId) {
+                    socket.emit('call-error', {
+                        callId,
+                        message: 'Missing call details'
+                    })
+                    return
+                }
+
+                const room = await Room.findOne({
+                    _id: roomId,
+                    type: 'direct',
+                    members: { $all: [socket.userId, to], $size: 2 }
+                }).select('_id members')
+
+                if (!room) {
+                    socket.emit('call-error', {
+                        callId,
+                        message: 'Call is only available between room members'
+                    })
+                    return
+                }
+
+                const targetSockets = io.sockets.adapter.rooms.get(to)
+                if (!targetSockets?.size) {
+                    socket.emit('call-rejected', {
+                        from: to,
+                        roomId,
+                        callId,
+                        reason: 'unavailable'
+                    })
+                    return
+                }
+
+                const timeoutId = setTimeout(() => {
+                    const pendingCall = activeCalls.get(callId)
+                    if (!pendingCall || pendingCall.status !== 'ringing') return
+
+                    activeCalls.delete(callId)
+                    io.to(pendingCall.from).emit('call-rejected', {
+                        from: pendingCall.to,
+                        roomId: pendingCall.roomId,
+                        callId,
+                        reason: 'no_answer'
+                    })
+                    io.to(pendingCall.to).emit('call-ended', {
+                        from: pendingCall.from,
+                        roomId: pendingCall.roomId,
+                        callId,
+                        reason: 'no_answer'
+                    })
+                }, CALL_RING_TIMEOUT_MS)
+
+                activeCalls.set(callId, {
+                    roomId: roomId.toString(),
+                    from: socket.userId,
+                    to,
+                    status: 'ringing',
+                    startedAt: Date.now(),
+                    timeoutId
+                })
+
+                io.to(to).emit('call-incoming', {
+                    from: socket.userId,
+                    roomId,
+                    offer,
+                    callType: callType === 'video' ? 'video' : 'audio',
+                    callId
+                })
+            } catch (error) {
+                socket.emit('call-error', {
+                    callId,
+                    message: error.message
+                })
+            }
+        })
+
+        socket.on('call-answer', ({ to, roomId, answer, callId }) => {
+            const call = activeCalls.get(callId)
+            if (!call || call.roomId !== roomId || call.to !== socket.userId) return
+
+            clearTimeout(call.timeoutId)
+            call.status = 'active'
+            call.timeoutId = null
+            activeCalls.set(callId, call)
+
+            io.to(to).emit('call-answered', {
                 from: socket.userId,
-                offer,
-                callType  // 'audio' or 'video'
+                roomId,
+                answer,
+                callId
             })
         })
 
-        socket.on('call-answer', ({ to, answer }) => {
-            io.to(to).emit('call-answered', { answer })
+        socket.on('call-ice-candidate', ({ to, roomId, candidate, callId }) => {
+            const call = activeCalls.get(callId)
+            if (!call || call.roomId !== roomId) return
+            if (![call.from, call.to].includes(socket.userId)) return
+
+            io.to(to).emit('call-ice-candidate', {
+                from: socket.userId,
+                roomId,
+                candidate,
+                callId
+            })
         })
 
-        socket.on('call-ice-candidate', ({ to, candidate }) => {
-            io.to(to).emit('call-ice-candidate', { candidate })
+        socket.on('call-reject', ({ to, roomId, callId, reason = 'rejected' }) => {
+            const call = activeCalls.get(callId)
+            if (!call || call.roomId !== roomId || call.to !== socket.userId) return
+
+            clearTimeout(call.timeoutId)
+            activeCalls.delete(callId)
+            io.to(to).emit('call-rejected', {
+                from: socket.userId,
+                roomId,
+                callId,
+                reason
+            })
         })
 
-        socket.on('call-end', ({ to }) => {
-            io.to(to).emit('call-ended')
+        socket.on('call-end', ({ to, roomId, callId, reason = 'ended' }) => {
+            const call = activeCalls.get(callId)
+            if (call && call.roomId === roomId) {
+                clearTimeout(call.timeoutId)
+                activeCalls.delete(callId)
+            }
+
+            if (to) {
+                io.to(to).emit('call-ended', {
+                    from: socket.userId,
+                    roomId,
+                    callId,
+                    reason
+                })
+            }
         })
 
         // ── NEARBY SHARE DISCOVERY ─────────────────────
@@ -397,6 +518,19 @@ const initSocket = (server) => {
             }
 
             cancelTransfersForUser(socket.userId)
+            for (const [callId, call] of activeCalls.entries()) {
+                if (call.from !== socket.userId && call.to !== socket.userId) continue
+
+                const peerId = call.from === socket.userId ? call.to : call.from
+                io.to(peerId).emit('call-ended', {
+                    from: socket.userId,
+                    roomId: call.roomId,
+                    callId,
+                    reason: 'peer_disconnected'
+                })
+                clearTimeout(call.timeoutId)
+                activeCalls.delete(callId)
+            }
             console.log(`❌ Socket disconnected: ${socket.id}`)
         })
     })
